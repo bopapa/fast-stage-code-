@@ -339,15 +339,12 @@
 
         const sorted = [...seriesRows].sort((a, b) => normalizeDate(a.quoteDate) - normalizeDate(b.quoteDate));
         const quotePrices = sorted.map((r) => r.unitPrice);
+        const avgPrice = quotePrices.reduce((a, b) => a + b, 0) / quotePrices.length;
+        const avgSeries = quotePrices.map(() => avgPrice);
         const budgetValues = sorted.map((r) => r.budget).filter((v) => v !== null);
-        const cumulativeAvg = [];
-        let sum = 0;
-        quotePrices.forEach((v, idx) => {
-          sum += v;
-          cumulativeAvg.push(sum / (idx + 1));
-        });
+        const budgetValue = budgetValues.length ? budgetValues[budgetValues.length - 1] : avgPrice;
 
-        const allValues = [...quotePrices, ...cumulativeAvg, ...(budgetValues.length ? budgetValues : [])];
+        const allValues = [...quotePrices, ...avgSeries, budgetValue];
         let minV = Math.min(...allValues);
         let maxV = Math.max(...allValues);
         if (minV === maxV) {
@@ -370,12 +367,11 @@
         const yFor = (value) => yBottom - ((value - yMin) / (yMax - yMin)) * (yBottom - yTop);
 
         const quotePoints = sorted.map((r, idx) => `${xFor(idx, sorted.length)},${yFor(r.unitPrice)}`).join(" ");
-        const avgPoints = cumulativeAvg.map((v, idx) => `${xFor(idx, sorted.length)},${yFor(v)}`).join(" ");
+        const avgPoints = avgSeries.map((v, idx) => `${xFor(idx, sorted.length)},${yFor(v)}`).join(" ");
         chartQuoteLine.setAttribute("points", quotePoints);
         chartAvgLine.setAttribute("points", avgPoints);
 
-        const budgetRef = budgetValues.length ? budgetValues[budgetValues.length - 1] : cumulativeAvg[cumulativeAvg.length - 1];
-        const budgetY = yFor(budgetRef);
+        const budgetY = yFor(budgetValue);
         chartBudgetLine.setAttribute("y1", String(budgetY));
         chartBudgetLine.setAttribute("y2", String(budgetY));
 
@@ -420,18 +416,19 @@ function render() {
           return;
         }
 
-        const sameModel = state.mergedRows.filter((r) => r.productName === top.productName);
         const chartRows = buildChartSeries(rows, model);
-        const prices = sameModel.map((r) => r.unitPrice);
+        const chartRowsSorted = [...chartRows].sort((a, b) => normalizeDate(a.quoteDate) - normalizeDate(b.quoteDate));
+        const latest = chartRowsSorted[chartRowsSorted.length - 1] || top;
+        const prices = chartRowsSorted.map((r) => r.unitPrice);
         const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
-        chartItemName.textContent = top.productName;
-        chartQuote.textContent = formatYen(top.unitPrice);
-        chartBudget.textContent = formatYen(top.budget);
+        chartItemName.textContent = latest.productName;
+        chartQuote.textContent = formatYen(latest.unitPrice);
+        chartBudget.textContent = formatYen(latest.budget);
         kpiLow.textContent = formatYen(Math.min(...prices));
         kpiHigh.textContent = formatYen(Math.max(...prices));
-        kpiAvg.textContent = `${top.unitPrice - avg >= 0 ? "+" : ""}${formatYen(top.unitPrice - avg)}`;
-        judgement.textContent = `判定: ${top.judgement.label}（差額 ${formatYen(top.diff)} / コスト乖離率 ${formatPct(top.costVarianceRate)}）`;
-        judgement.className = `status-bar ${top.judgement.tone}`;
+        kpiAvg.textContent = `${latest.unitPrice - avg >= 0 ? "+" : ""}${formatYen(latest.unitPrice - avg)}`;
+        judgement.textContent = `判定: ${latest.judgement.label}（差額 ${formatYen(latest.diff)} / コスト乖離率 ${formatPct(latest.costVarianceRate)}）`;
+        judgement.className = `status-bar ${latest.judgement.tone}`;
         renderChart(chartRows);
       }
 
