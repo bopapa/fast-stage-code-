@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>トラッカー用CSVデータ書き込みツール</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Yu Gothic UI", "Meiryo", sans-serif;
+        --bg: #f3f6fb;
+        --surface: #ffffff;
+        --surface-muted: #f8fbff;
+        --text: #17212f;
+        --text-sub: #4b5f7f;
+        --border: #d6dfec;
+        --shadow: 0 12px 30px rgba(15, 34, 63, 0.12);
+        --primary: #2f67d8;
+        --primary-strong: #2351b2;
+        --secondary: #6b7f9f;
+        --secondary-strong: #4e607c;
+        --success: #0f7b32;
+        --danger: #bf1a1a;
+      }
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, #f7f9fd 0%, var(--bg) 100%);
+        color: var(--text);
+      }
+      .container {
+        max-width: 1040px;
+        margin: 24px auto;
+        background: var(--surface);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        border: 1px solid #e4ebf6;
+        padding: 24px;
+      }
+      h1 {
+        margin-top: 0;
+        margin-bottom: 6px;
+        font-size: 1.6rem;
+        color: #183055;
+      }
+      h2 {
+        margin: 0 0 10px;
+        font-size: 1.1rem;
+        color: #1f3a63;
+      }
+      .field,
+      .section {
+        margin-bottom: 18px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+      }
+      .field {
+        background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%);
+      }
+      .label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 700;
+      }
+      .inline {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      button {
+        border: none;
+        border-radius: 8px;
+        padding: 9px 14px;
+        cursor: pointer;
+        font-size: 0.92rem;
+        font-weight: 600;
+        transition: transform 0.04s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .btn-primary {
+        background: var(--primary);
+        color: #fff;
+        box-shadow: 0 3px 12px rgba(47, 103, 216, 0.28);
+      }
+      .btn-primary:hover {
+        background: var(--primary-strong);
+      }
+      .btn-secondary {
+        background: #eaf0fa;
+        color: #27416a;
+        border: 1px solid #c9d7ec;
+      }
+      .btn-secondary:hover {
+        background: #dfe9f8;
+      }
+      textarea {
+        width: 100%;
+        min-height: 180px;
+        border-radius: 8px;
+        border: 1px solid #c7d2e3;
+        padding: 10px;
+        resize: vertical;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        line-height: 1.5;
+      }
+      .dropzone {
+        border: 2px dashed #7f98c9;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        background: var(--surface-muted);
+      }
+      .dropzone.dragover {
+        background: #e8f0ff;
+        border-color: var(--primary);
+      }
+      .message {
+        margin-top: 8px;
+        font-size: 0.95rem;
+      }
+      .message.success {
+        color: var(--success);
+      }
+      .message.error {
+        color: var(--danger);
+      }
+      .log {
+        background: #111d33;
+        color: #dbeafe;
+        padding: 10px;
+        border-radius: 8px;
+        min-height: 120px;
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      .review {
+        border: 1px solid #c7d2e3;
+        border-radius: 8px;
+        padding: 12px;
+        background: #fff;
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      .hint {
+        color: var(--text-sub);
+        font-size: 0.9rem;
+      }
+      .editor {
+        margin-top: 12px;
+        border: 1px solid #c7d2e3;
+        border-radius: 8px;
+        padding: 10px;
+        background: #fff;
+      }
+      .editor[hidden] {
+        display: none;
+      }
+      .editor-table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 860px;
+      }
+      th,
+      td {
+        border: 1px solid #d6dfec;
+        padding: 8px;
+        text-align: left;
+        font-size: 0.9rem;
+      }
+      th {
+        background: #eef4ff;
+        color: #213f69;
+      }
+      .category-input {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #b7c7e3;
+        border-radius: 6px;
+        padding: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>トラッカー用CSVデータ書き込みツール</h1>
+      <p class="hint" style="margin-top: 0; margin-bottom: 14px">業務で使いやすい配色・操作導線に調整したCSV追記ツールです。</p>
+
+      <div class="field">
+        <label class="label">書き込むCSVファイル指定：</label>
+        <div class="inline">
+          <button id="pickTargetBtn" type="button" class="btn-primary">CSVファイルを選択</button>
+          <button id="clearTargetBtn" type="button" class="btn-secondary">ファイル指定クリア</button>
+          <span id="targetFileName">未選択</span>
+        </div>
+        <p class="hint">Chrome/Edge で動作します。選択したCSVに追記し、上書き保存します。</p>
+      </div>
+
+      <section class="section">
+        <h2>テキストで書き込み</h2>
+        <p class="hint">1行=1レコード。カンマ区切りで入力してください（複数行可）。</p>
+        <textarea id="textInput" placeholder="例: 機材A,商品A,CODE001,1000,2026-02-25"></textarea>
+        <div class="inline" style="margin-top: 10px">
+          <button id="appendTextBtn" type="button" class="btn-primary">追加</button>
+          <button id="clearTextBtn" type="button" class="btn-secondary">テキストクリア</button>
+          <span id="textResult" class="message"></span>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>CSVファイル添付による追加</h2>
+        <div id="dropzone" class="dropzone">
+          ここにCSVファイルをドラッグ＆ドロップ（1ファイルのみ）
+          <div style="margin-top: 10px">
+            <input id="attachInput" type="file" accept=".csv,text/csv" />
+          </div>
+          <div id="attachedFile" class="hint" style="margin-top: 8px">未添付</div>
+        </div>
+
+        <div id="attachedEditor" class="editor" hidden>
+          <div class="hint" style="margin-bottom: 8px">
+            添付CSVレビュー（CSV添付時のみ表示）。「機材区分」列はレコードごとに編集できます。
+          </div>
+          <div class="editor-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>機材区分（編集可）</th>
+                  <th>商品名</th>
+                  <th>商品コード</th>
+                  <th>単価</th>
+                  <th>見積日付</th>
+                </tr>
+              </thead>
+              <tbody id="editorBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="inline" style="margin-top: 10px">
+          <button id="appendFileBtn" type="button" class="btn-primary">追加</button>
+          <button id="clearAttachedBtn" type="button" class="btn-secondary">ファイル指定クリア</button>
+          <span id="fileResult" class="message"></span>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>共通ログ</h2>
+        <div id="commonLog" class="log"></div>
+      </section>
+
+      <section class="section">
+        <h2>レビューエリア</h2>
+        <div id="review" class="review"></div>
+      </section>
+    </div>
+
+    <script>
+      (() => {
+        const EXPECTED_HEADER = ["機材区分", "商品名", "商品コード", "単価", "見積日付"];
+        const COLUMN_COUNT = EXPECTED_HEADER.length;
+
+        let targetHandle = null;
+        let attachedCsvFile = null;
+        let attachedCsvRows = [];
+
+        const targetFileNameEl = document.getElementById("targetFileName");
+        const textResultEl = document.getElementById("textResult");
+        const fileResultEl = document.getElementById("fileResult");
+        const commonLogEl = document.getElementById("commonLog");
+        const reviewEl = document.getElementById("review");
+        const attachedFileEl = document.getElementById("attachedFile");
+        const attachedEditorEl = document.getElementById("attachedEditor");
+        const editorBodyEl = document.getElementById("editorBody");
+        const attachInputEl = document.getElementById("attachInput");
+        const textInputEl = document.getElementById("textInput");
+
+        function normalizeCell(value) {
+          return String(value ?? "")
+            .replace(/^﻿/, "")
+            .trim();
+        }
+
+        function isHeaderRow(row) {
+          if (!row || row.length !== COLUMN_COUNT) return false;
+          return row.every((cell, idx) => normalizeCell(cell) === EXPECTED_HEADER[idx]);
+        }
+
+        function quoteCsvCell(value) {
+          const text = String(value ?? "");
+          if (/[",\n\r]/.test(text)) {
+            return '"' + text.replace(/"/g, '""') + '"';
+          }
+          return text;
+        }
+
+        function rowsToCsv(rows) {
+          return rows.map((row) => row.map(quoteCsvCell).join(",")).join("\n");
+        }
+
+        function parseCsv(text) {
+          const rows = [];
+          let row = [];
+          let cell = "";
+          let i = 0;
+          let inQuotes = false;
+
+          while (i < text.length) {
+            const ch = text[i];
+
+            if (inQuotes) {
+              if (ch === '"') {
+                if (text[i + 1] === '"') {
+                  cell += '"';
+                  i += 2;
+                  continue;
+                }
+                inQuotes = false;
+              } else {
+                cell += ch;
+              }
+            } else {
+              if (ch === '"') {
+                inQuotes = true;
+              } else if (ch === ",") {
+                row.push(cell);
+                cell = "";
+              } else if (ch === "\n") {
+                row.push(cell);
+                rows.push(row);
+                row = [];
+                cell = "";
+              } else if (ch === "\r") {
+              } else {
+                cell += ch;
+              }
+            }
+            i += 1;
+          }
+
+          row.push(cell);
+          const hasAnyData = row.some((c) => c.length > 0) || row.length > 1;
+          if (hasAnyData) {
+            rows.push(row);
+          }
+
+          return rows;
+        }
+
+        function setResult(el, message, isError = false) {
+          el.textContent = message;
+          el.className = `message ${isError ? "error" : "success"}`;
+        }
+
+        function log(message) {
+          const now = new Date().toLocaleString("ja-JP");
+          commonLogEl.textContent += `[${now}] ${message}\n`;
+          commonLogEl.scrollTop = commonLogEl.scrollHeight;
+        }
+
+        function renderReview(targetRows = null) {
+          const lines = [
+            "ヘッダー情報",
+            EXPECTED_HEADER.join(","),
+            "",
+          ];
+
+          if (!targetRows || targetRows.length <= 1) {
+            lines.push("(書き込み対象CSVのレコードはまだありません)");
+            reviewEl.textContent = lines.join("\n");
+            return;
+          }
+
+          const dataRows = targetRows.slice(1);
+          dataRows.forEach((row, idx) => {
+            lines.push(`${idx + 1},${row.join(",")}`);
+          });
+
+          reviewEl.textContent = lines.join("\n");
+        }
+
+        async function refreshReviewFromTarget() {
+          if (!targetHandle) {
+            renderReview();
+            return;
+          }
+
+          const allRows = await readTargetRows();
+          let baseRows = allRows.map((r) => r.map((c) => normalizeCell(c)));
+
+          if (baseRows.length === 0) {
+            baseRows = [EXPECTED_HEADER.slice()];
+          }
+
+          if (!isHeaderRow(baseRows[0])) {
+            throw new Error("書き込み対象CSVのヘッダーが想定と異なります");
+          }
+
+          renderReview(baseRows);
+        }
+
+        async function readTargetRows() {
+          if (!targetHandle) {
+            throw new Error("書き込むCSVファイルを指定してください");
+          }
+          const file = await targetHandle.getFile();
+          const text = await file.text();
+          return parseCsv(text);
+        }
+
+        function validateAndCleanInputRows(rows) {
+          const cleaned = rows
+            .map((r) => r.map((cell) => normalizeCell(cell)))
+            .filter((r) => r.some((c) => c.length > 0))
+            .filter((r) => !isHeaderRow(r));
+
+          if (cleaned.length === 0) {
+            throw new Error("追加対象の有効なレコードがありません");
+          }
+
+          const invalid = cleaned.find((r) => r.length !== COLUMN_COUNT);
+          if (invalid) {
+            throw new Error("書き込むファイルに対し列数が一致しません");
+          }
+
+          return cleaned;
+        }
+
+        function containsDuplicate(existingRows, inputRows) {
+          const existingSet = new Set(existingRows.map((r) => r.join("\u0001")));
+          const localSet = new Set();
+
+          for (const row of inputRows) {
+            const key = row.join("\u0001");
+            if (existingSet.has(key) || localSet.has(key)) {
+              return true;
+            }
+            localSet.add(key);
+          }
+          return false;
+        }
+
+        function escapeHtml(value) {
+          return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+        }
+
+        function renderAttachedEditor() {
+          if (attachedCsvRows.length === 0) {
+            attachedEditorEl.hidden = true;
+            editorBodyEl.innerHTML = "";
+            return;
+          }
+
+          attachedEditorEl.hidden = false;
+          editorBodyEl.innerHTML = attachedCsvRows
+            .map(
+              (row, idx) => `
+                <tr>
+                  <td>${idx + 1}</td>
+                  <td><input class="category-input" type="text" data-row-index="${idx}" value="${escapeHtml(row[0])}" /></td>
+                  <td>${escapeHtml(row[1])}</td>
+                  <td>${escapeHtml(row[2])}</td>
+                  <td>${escapeHtml(row[3])}</td>
+                  <td>${escapeHtml(row[4])}</td>
+                </tr>
+              `
+            )
+            .join("");
+        }
+
+        function syncAttachedRowsFromEditor() {
+          const inputs = editorBodyEl.querySelectorAll("input[data-row-index]");
+          inputs.forEach((input) => {
+            const idx = Number(input.getAttribute("data-row-index"));
+            if (attachedCsvRows[idx]) {
+              attachedCsvRows[idx][0] = String(input.value ?? "").trim();
+            }
+          });
+        }
+
+        async function appendRows(inputRows, sourceLabel) {
+          const allRows = await readTargetRows();
+          let baseRows = allRows.map((r) => r.map((c) => normalizeCell(c)));
+
+          if (baseRows.length === 0) {
+            baseRows = [EXPECTED_HEADER.slice()];
+          }
+
+          if (!isHeaderRow(baseRows[0])) {
+            throw new Error("書き込み対象CSVのヘッダーが想定と異なります");
+          }
+
+          const existingData = baseRows.slice(1);
+          if (containsDuplicate(existingData, inputRows)) {
+            throw new Error("既にこの情報は存在します");
+          }
+
+          const mergedRows = [...baseRows, ...inputRows];
+
+          const csvOut = rowsToCsv(mergedRows);
+          const writable = await targetHandle.createWritable();
+          await writable.write(csvOut);
+          await writable.close();
+
+          renderReview(mergedRows);
+          log(`${sourceLabel}: ${inputRows.length}件を追記しました`);
+          return inputRows.length;
+        }
+
+        async function loadAttachedCsv(file) {
+          if (!file) {
+            attachedCsvRows = [];
+            renderAttachedEditor();
+            return;
+          }
+          const text = await file.text();
+          attachedCsvRows = validateAndCleanInputRows(parseCsv(text));
+          renderAttachedEditor();
+        }
+
+        document.getElementById("pickTargetBtn").addEventListener("click", async () => {
+          try {
+            if (!window.showOpenFilePicker) {
+              throw new Error("このブラウザは File System Access API に未対応です");
+            }
+            const [handle] = await window.showOpenFilePicker({
+              multiple: false,
+              types: [
+                {
+                  description: "CSVファイル",
+                  accept: { "text/csv": [".csv"] },
+                },
+              ],
+            });
+            targetHandle = handle;
+            targetFileNameEl.textContent = handle.name;
+            await refreshReviewFromTarget();
+            log(`書き込み先ファイルを指定: ${handle.name}`);
+          } catch (err) {
+            log(`書き込み先ファイル指定エラー: ${err.message}`);
+          }
+        });
+
+        document.getElementById("clearTargetBtn").addEventListener("click", () => {
+          targetHandle = null;
+          targetFileNameEl.textContent = "未選択";
+          renderReview();
+          log("書き込み先ファイル指定をクリアしました");
+        });
+
+        document.getElementById("appendTextBtn").addEventListener("click", async () => {
+          textResultEl.textContent = "";
+          try {
+            const text = textInputEl.value;
+            const rows = validateAndCleanInputRows(parseCsv(text));
+            const count = await appendRows(rows, "テキスト追加");
+            setResult(textResultEl, `正常終了: ${count}件追記しました`);
+          } catch (err) {
+            setResult(textResultEl, `書き込みエラー: ${err.message}`, true);
+            log(`テキスト追加エラー: ${err.message}`);
+          }
+        });
+
+        document.getElementById("clearTextBtn").addEventListener("click", () => {
+          textInputEl.value = "";
+          setResult(textResultEl, "テキスト入力をクリアしました", false);
+          log("テキスト入力をクリアしました");
+        });
+
+        async function setAttachedFile(file) {
+          attachedCsvFile = file;
+          attachedFileEl.textContent = file ? `添付ファイル: ${file.name}` : "未添付";
+          if (!file) {
+            attachedCsvRows = [];
+            renderAttachedEditor();
+            return;
+          }
+          try {
+            await loadAttachedCsv(file);
+            setResult(fileResultEl, "添付CSVを読み込みました。必要なら機材区分を編集してください。", false);
+            log(`添付CSVを読み込み: ${file.name} (${attachedCsvRows.length}件)`);
+          } catch (err) {
+            attachedCsvRows = [];
+            renderAttachedEditor();
+            setResult(fileResultEl, `書き込みエラー: ${err.message}`, true);
+            log(`添付CSV読み込みエラー: ${err.message}`);
+          }
+        }
+
+        document.getElementById("attachInput").addEventListener("change", async (e) => {
+          const file = e.target.files?.[0] || null;
+          await setAttachedFile(file);
+        });
+
+        const dropzone = document.getElementById("dropzone");
+        ["dragenter", "dragover"].forEach((name) => {
+          dropzone.addEventListener(name, (e) => {
+            e.preventDefault();
+            dropzone.classList.add("dragover");
+          });
+        });
+        ["dragleave", "drop"].forEach((name) => {
+          dropzone.addEventListener(name, (e) => {
+            e.preventDefault();
+            dropzone.classList.remove("dragover");
+          });
+        });
+
+        dropzone.addEventListener("drop", async (e) => {
+          const files = e.dataTransfer?.files;
+          if (!files || files.length === 0) return;
+          if (files.length > 1) {
+            setResult(fileResultEl, "書き込みエラー: 添付CSVは1ファイルのみです", true);
+            log("添付CSVエラー: 2ファイル以上がドロップされました");
+            return;
+          }
+          await setAttachedFile(files[0]);
+        });
+
+        document.getElementById("appendFileBtn").addEventListener("click", async () => {
+          fileResultEl.textContent = "";
+          try {
+            if (!attachedCsvFile || attachedCsvRows.length === 0) {
+              throw new Error("添付CSVファイルを指定してください");
+            }
+            syncAttachedRowsFromEditor();
+            const rows = validateAndCleanInputRows(attachedCsvRows);
+            const count = await appendRows(rows, "添付CSV追加");
+            setResult(fileResultEl, `正常終了: ${count}件追記しました`);
+          } catch (err) {
+            setResult(fileResultEl, `書き込みエラー: ${err.message}`, true);
+            log(`添付CSV追加エラー: ${err.message}`);
+          }
+        });
+
+        document.getElementById("clearAttachedBtn").addEventListener("click", async () => {
+          attachInputEl.value = "";
+          await setAttachedFile(null);
+          setResult(fileResultEl, "添付CSVファイル指定をクリアしました", false);
+          log("添付CSVファイル指定をクリアしました");
+        });
+
+        renderReview();
+        renderAttachedEditor();
+        log("ツールを起動しました");
+      })();
+    </script>
+  </body>
+</html>
