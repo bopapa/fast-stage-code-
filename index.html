@@ -77,11 +77,6 @@
           機材区分
           <select id="category-filter">
             <option value="すべて" selected>すべて</option>
-            <option value="カメラ">カメラ</option>
-            <option value="レンズ">レンズ</option>
-            <option value="音響">音響</option>
-            <option value="照明">照明</option>
-            <option value="その他">その他</option>
           </select>
         </label>
         <label>
@@ -296,6 +291,16 @@
         return rows.filter((r) => normalizeDate(r.quoteDate) >= start);
       }
 
+
+      function refreshCategoryFilter() {
+        const categories = [...new Set(state.mergedRows.map((r) => r.category).filter(Boolean))]
+          .sort((a, b) => a.localeCompare(b, "ja"));
+        const prev = categoryFilter.value || "すべて";
+        categoryFilter.innerHTML = `<option value="すべて">すべて</option>` +
+          categories.map((c) => `<option value="${c}">${c}</option>`).join("");
+        categoryFilter.value = categories.includes(prev) || prev === "すべて" ? prev : "すべて";
+      }
+
       function refreshModelFilter() {
         const category = categoryFilter.value;
         const source = state.mergedRows;
@@ -487,6 +492,7 @@ function render() {
         if (state.mergedRows.length === 0) {
           throw new Error("有効な見積データを読み込めませんでした。ヘッダ名/日付を確認してください。");
         }
+        refreshCategoryFilter();
         refreshModelFilter();
         render();
       }
@@ -527,6 +533,7 @@ function render() {
         state.mergedRows = mergeRows(state.quoteRows, state.budgetRows);
         quotePath.textContent = localStorage.getItem(STORAGE_KEYS.quoteName) || "未指定";
         budgetPath.textContent = localStorage.getItem(STORAGE_KEYS.budgetName) || "未指定";
+        refreshCategoryFilter();
         refreshModelFilter();
         render();
         importStatus.textContent = "未取り込み（サンプル表示中）";
@@ -536,6 +543,7 @@ function render() {
         state.quoteRows = [];
         state.budgetRows = [];
         state.mergedRows = [];
+        refreshCategoryFilter();
         refreshModelFilter();
         render();
         importStatus.textContent = "取り込み結果をクリアしました。";
