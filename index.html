@@ -46,6 +46,7 @@
       .line { fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
       .line.quote { stroke:#1859ff; } .line.avg { stroke:#12a36f; }
       .axis-labels text { fill:#66758d; font-size:12px; }
+      .budget-label { fill:#5a6480; font-size:11px; font-weight:600; }
       .status-bar { margin-top:10px; border-radius:10px; padding:10px 12px; font-weight:600; }
       .status-bar.good { background:#e9f8f2; color:#177e58; }
       .status-bar.warn { background:#fff3e1; color:#af6200; }
@@ -105,7 +106,7 @@
         </label>
 
         <label>
-          予算CSV（商品名 / 単価）
+          予算CSV（機材区分 / 商品名 / 単価）
           <div class="split-actions">
             <button type="button" id="choose-budget">予算ファイルを指定</button>
             <button type="button" id="load-budget-auto">前回指定で再読込</button>
@@ -153,7 +154,7 @@
             <line x1="60" y1="220" x2="880" y2="220" />
             <line x1="60" y1="280" x2="880" y2="280" />
           </g>
-          <line id="chart-budget-line" class="budget-line" x1="60" y1="120" x2="880" y2="120" />
+          <g id="chart-budget-lines"></g>
           <polyline id="chart-avg-line" class="line avg" points="" />
           <polyline id="chart-quote-line" class="line quote" points="" />
           <g id="chart-y-axis" class="axis-labels"></g>
@@ -209,7 +210,7 @@
       const kpiAvg = document.getElementById("kpi-avg");
       const chartQuoteLine = document.getElementById("chart-quote-line");
       const chartAvgLine = document.getElementById("chart-avg-line");
-      const chartBudgetLine = document.getElementById("chart-budget-line");
+      const chartBudgetLines = document.getElementById("chart-budget-lines");
       const chartXAxis = document.getElementById("chart-x-axis");
       const chartYAxis = document.getElementById("chart-y-axis");
 
@@ -266,15 +267,24 @@
       }
       function mapBudgetRows(rows) {
         return rows.map((r) => ({
+          category: r["機材区分"] || r.category || "",
           productName: r["商品名"] || r["機材名・型番"] || r.productName || "",
           unitPrice: toNumber(r["単価"] || r["予算単価"] || r.unitPrice)
         })).filter((r) => r.productName && Number.isFinite(r.unitPrice));
       }
 
       function mergeRows(quoteRows, budgetRows) {
-        const budgetMap = new Map(budgetRows.map((r) => [r.productName, r.unitPrice]));
+        const byCategoryAndName = new Map(
+          budgetRows
+            .filter((r) => r.category)
+            .map((r) => [`${r.category}||${r.productName}`, r.unitPrice])
+        );
+        const byNameOnly = new Map(budgetRows.map((r) => [r.productName, r.unitPrice]));
         return quoteRows.map((q) => {
-          const budget = budgetMap.has(q.productName) ? budgetMap.get(q.productName) : null;
+          const key = `${q.category}||${q.productName}`;
+          const budget = byCategoryAndName.has(key)
+            ? byCategoryAndName.get(key)
+            : (byNameOnly.has(q.productName) ? byNameOnly.get(q.productName) : null);
           const diff = budget === null ? null : q.unitPrice - budget;
           const rate = budget && budget !== 0 ? (diff / budget) * 100 : null;
           return { ...q, budget, diff, costVarianceRate: rate, judgement: evaluateRule(rate) };
@@ -326,14 +336,13 @@
         return rows.filter((r) => r.productName === primaryName);
       }
 
-      function renderChart(seriesRows) {
+      function renderChart(seriesRows, budgetLines = []) {
         if (!seriesRows.length) {
           chartQuoteLine.setAttribute("points", "");
           chartAvgLine.setAttribute("points", "");
           chartYAxis.innerHTML = "";
           chartXAxis.innerHTML = "";
-          chartBudgetLine.setAttribute("y1", "120");
-          chartBudgetLine.setAttribute("y2", "120");
+          chartBudgetLines.innerHTML = "";
           return;
         }
 
@@ -341,10 +350,12 @@
         const quotePrices = sorted.map((r) => r.unitPrice);
         const avgPrice = quotePrices.reduce((a, b) => a + b, 0) / quotePrices.length;
         const avgSeries = quotePrices.map(() => avgPrice);
-        const budgetValues = sorted.map((r) => r.budget).filter((v) => v !== null);
-        const budgetValue = budgetValues.length ? budgetValues[budgetValues.length - 1] : avgPrice;
 
-        const allValues = [...quotePrices, ...avgSeries, budgetValue];
+        const activeBudgetLines = budgetLines.length
+          ? budgetLines.filter((b) => Number.isFinite(b.value))
+          : [{ label: sorted[sorted.length - 1].productName, value: sorted[sorted.length - 1].budget }].filter((b) => Number.isFinite(b.value));
+
+        const allValues = [...quotePrices, ...avgSeries, ...activeBudgetLines.map((b) => b.value)];
         let minV = Math.min(...allValues);
         let maxV = Math.max(...allValues);
         if (minV === maxV) {
@@ -371,9 +382,14 @@
         chartQuoteLine.setAttribute("points", quotePoints);
         chartAvgLine.setAttribute("points", avgPoints);
 
-        const budgetY = yFor(budgetValue);
-        chartBudgetLine.setAttribute("y1", String(budgetY));
-        chartBudgetLine.setAttribute("y2", String(budgetY));
+        const palette = ["#cc4458", "#8b5cf6", "#f59e0b", "#0ea5e9", "#ef4444", "#22c55e"];
+        chartBudgetLines.innerHTML = activeBudgetLines.map((line, idx) => {
+          const y = yFor(line.value);
+          const color = palette[idx % palette.length];
+          return `<line class="budget-line" x1="60" y1="${y}" x2="880" y2="${y}" style="stroke:${color}" />
+` +
+            `<text class="budget-label" x="665" y="${y - 4}" style="fill:${color}">${line.label}: ${formatYen(line.value)}</text>`;
+        }).join("");
 
         const ticks = 5;
         chartYAxis.innerHTML = Array.from({ length: ticks }, (_, i) => {
@@ -412,12 +428,18 @@ function render() {
           judgement.textContent = "判定: 条件に一致するデータがありません。";
           judgement.className = "status-bar warn";
           kpiLow.textContent = "-"; kpiHigh.textContent = "-"; kpiAvg.textContent = "-";
-          renderChart([]);
+          renderChart([], []);
           return;
         }
 
         const chartRows = buildChartSeries(rows, model);
         const chartRowsSorted = [...chartRows].sort((a, b) => normalizeDate(a.quoteDate) - normalizeDate(b.quoteDate));
+        const budgetLines = (model === "すべて" && category !== "すべて")
+          ? [...new Map(rows.filter((r) => Number.isFinite(r.budget)).map((r) => [r.productName, r.budget])).entries()]
+              .map(([label, value]) => ({ label, value }))
+          : (chartRowsSorted.length && Number.isFinite(chartRowsSorted[chartRowsSorted.length - 1].budget)
+              ? [{ label: chartRowsSorted[chartRowsSorted.length - 1].productName, value: chartRowsSorted[chartRowsSorted.length - 1].budget }]
+              : []);
         const latest = chartRowsSorted[chartRowsSorted.length - 1] || top;
         const prices = chartRowsSorted.map((r) => r.unitPrice);
         const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
@@ -429,7 +451,7 @@ function render() {
         kpiAvg.textContent = `${latest.unitPrice - avg >= 0 ? "+" : ""}${formatYen(latest.unitPrice - avg)}`;
         judgement.textContent = `判定: ${latest.judgement.label}（差額 ${formatYen(latest.diff)} / コスト乖離率 ${formatPct(latest.costVarianceRate)}）`;
         judgement.className = `status-bar ${latest.judgement.tone}`;
-        renderChart(chartRows);
+        renderChart(chartRows, budgetLines);
       }
 
       async function readTextFromHandle(handle) {
