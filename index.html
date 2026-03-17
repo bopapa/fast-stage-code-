@@ -59,6 +59,8 @@
       .warn { background:#fff3e1; color:#c26d00; }
       .split-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
       .path-view { font-size:.78rem; color:#6a7891; margin-top:2px; word-break:break-all; }
+      .list-header { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+      .link-action { background:none; border:0; color:#1859ff; font-size:.85rem; cursor:pointer; text-decoration:underline; padding:0; }
     </style>
   </head>
   <body>
@@ -166,7 +168,10 @@
       </section>
 
       <section class="panel list-panel">
-        <h2>機材別 見積・予算比較一覧</h2>
+        <div class="list-header">
+          <h2>機材別 見積・予算比較一覧</h2>
+          <button type="button" id="link-budget-btn" class="link-action">🔗 予算単価を適用</button>
+        </div>
         <table>
           <thead>
             <tr>
@@ -215,8 +220,10 @@
       const chartBudgetLines = document.getElementById("chart-budget-lines");
       const chartXAxis = document.getElementById("chart-x-axis");
       const chartYAxis = document.getElementById("chart-y-axis");
+      const linkBudgetBtn = document.getElementById("link-budget-btn");
 
       let state = { quoteRows: [...sampleQuoteData], budgetRows: [...sampleBudgetData], mergedRows: [] };
+      let viewState = { rowKeys: [], budgetLines: [] };
 
       function openDb() {
         return new Promise((resolve, reject) => {
@@ -419,6 +426,50 @@
         }).join("");
         chartXAxis.innerHTML = xTicks;
       }
+
+      function buildRowKey(r) {
+        return [r.category, r.productName, r.productCode || "", r.quoteDate, r.unitPrice].join("||");
+      }
+
+      function applyBudgetLinkSelection() {
+        if (!viewState.rowKeys.length) {
+          importStatus.textContent = "表示中の見積データがありません。";
+          return;
+        }
+        if (!viewState.budgetLines.length) {
+          importStatus.textContent = "適用可能な予算ラインがありません。";
+          return;
+        }
+
+        let selected = viewState.budgetLines[0];
+        if (viewState.budgetLines.length > 1) {
+          const menu = viewState.budgetLines
+            .map((b, i) => `${i + 1}: ${b.label} (${formatYen(b.value)})`)
+            .join("\n");
+          const answer = window.prompt(`適用する予算単価を選択してください（番号）\n${menu}`, "1");
+          if (!answer) return;
+          const idx = Number(answer) - 1;
+          if (!Number.isInteger(idx) || idx < 0 || idx >= viewState.budgetLines.length) {
+            importStatus.textContent = "予算選択番号が不正です。";
+            return;
+          }
+          selected = viewState.budgetLines[idx];
+        }
+
+        const keySet = new Set(viewState.rowKeys);
+        state.mergedRows = state.mergedRows.map((r) => {
+          const key = buildRowKey(r);
+          if (!keySet.has(key)) return r;
+          const budget = selected.value;
+          const diff = r.unitPrice - budget;
+          const rate = budget !== 0 ? (diff / budget) * 100 : null;
+          return { ...r, budget, diff, costVarianceRate: rate, judgement: evaluateRule(rate) };
+        });
+
+        importStatus.textContent = `予算単価を適用しました: ${selected.label} (${formatYen(selected.value)})`;
+        render();
+      }
+
 function render() {
         const category = categoryFilter.value;
         const model = modelFilter.value || "すべて";
@@ -429,6 +480,8 @@ function render() {
         }
 
         rows.sort((a, b) => normalizeDate(b.quoteDate) - normalizeDate(a.quoteDate));
+
+        viewState.rowKeys = rows.map((r) => buildRowKey(r));
 
         compareBody.innerHTML = rows.map((r) => `<tr>
           <td>${r.category}</td><td>${r.productName}</td><td>${r.productCode || "-"}</td><td>${formatYen(r.unitPrice)}</td><td>${r.quoteDate}</td><td>${formatYen(r.budget)}</td><td>${r.diff === null ? "-" : formatYen(r.diff)}</td><td>${formatPct(r.costVarianceRate)}</td><td><span class="pill ${r.judgement.className}">${r.judgement.label}</span></td>
@@ -442,6 +495,7 @@ function render() {
           judgement.textContent = "判定: 条件に一致するデータがありません。";
           judgement.className = "status-bar warn";
           kpiLow.textContent = "-"; kpiHigh.textContent = "-"; kpiAvg.textContent = "-";
+          viewState.budgetLines = [];
           renderChart([], []);
           return;
         }
@@ -465,6 +519,7 @@ function render() {
           : (Number.isFinite(latest.budget)
               ? [{ label: latest.productName, value: latest.budget }]
               : []);
+        viewState.budgetLines = budgetLines;
         const prices = chartRowsSorted.map((r) => r.unitPrice);
         const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
         chartItemName.textContent = latest.productName;
@@ -615,6 +670,7 @@ function render() {
       categoryFilter.addEventListener("change", () => { refreshModelFilter(); render(); });
       modelFilter.addEventListener("change", render);
       periodFilter.addEventListener("change", render);
+      linkBudgetBtn.addEventListener("click", applyBudgetLinkSelection);
 
       loadSample();
     </script>
