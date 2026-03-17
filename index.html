@@ -223,7 +223,7 @@
       const linkBudgetBtn = document.getElementById("link-budget-btn");
 
       let state = { quoteRows: [...sampleQuoteData], budgetRows: [...sampleBudgetData], mergedRows: [] };
-      let viewState = { rowKeys: [], budgetLines: [] };
+      let viewState = { rowKeys: [], budgetLines: [], appliedBudgetLine: null };
 
       function openDb() {
         return new Promise((resolve, reject) => {
@@ -466,6 +466,7 @@
           return { ...r, budget, diff, costVarianceRate: rate, judgement: evaluateRule(rate) };
         });
 
+        viewState.appliedBudgetLine = { label: selected.label, value: selected.value };
         importStatus.textContent = `予算単価を適用しました: ${selected.label} (${formatYen(selected.value)})`;
         render();
       }
@@ -496,6 +497,7 @@ function render() {
           judgement.className = "status-bar warn";
           kpiLow.textContent = "-"; kpiHigh.textContent = "-"; kpiAvg.textContent = "-";
           viewState.budgetLines = [];
+          viewState.appliedBudgetLine = null;
           renderChart([], []);
           return;
         }
@@ -508,7 +510,7 @@ function render() {
           (category !== "すべて" && model === "すべて");
 
         const targetBudgetCategory = category === "すべて" ? latest.category : category;
-        const budgetLines = shouldShowCategoryBudgets
+        let budgetLines = shouldShowCategoryBudgets
           ? [...new Map(
               state.budgetRows
                 .filter((b) => b.category === targetBudgetCategory && Number.isFinite(b.unitPrice))
@@ -519,14 +521,19 @@ function render() {
           : (Number.isFinite(latest.budget)
               ? [{ label: latest.productName, value: latest.budget }]
               : []);
+
+        if (viewState.appliedBudgetLine) {
+          budgetLines = [viewState.appliedBudgetLine];
+        }
+
         viewState.budgetLines = budgetLines;
         const prices = chartRowsSorted.map((r) => r.unitPrice);
         const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
         chartItemName.textContent = latest.productName;
         chartQuote.textContent = formatYen(latest.unitPrice);
-        chartBudget.textContent = shouldShowCategoryBudgets
+        chartBudget.textContent = budgetLines.length > 1
           ? `${targetBudgetCategory}区分: ${budgetLines.length}件の予算ライン`
-          : formatYen(latest.budget);
+          : (budgetLines.length === 1 ? formatYen(budgetLines[0].value) : formatYen(latest.budget));
         kpiLow.textContent = formatYen(Math.min(...prices));
         kpiHigh.textContent = formatYen(Math.max(...prices));
         kpiAvg.textContent = `${latest.unitPrice - avg >= 0 ? "+" : ""}${formatYen(latest.unitPrice - avg)}`;
@@ -589,6 +596,7 @@ function render() {
         state.quoteRows = mapQuoteRows(parseCsv(quoteText));
         state.budgetRows = mapBudgetRows(parseCsv(budgetText));
         state.mergedRows = mergeRows(state.quoteRows, state.budgetRows);
+        viewState.appliedBudgetLine = null;
         if (state.mergedRows.length === 0) {
           throw new Error("有効な見積データを読み込めませんでした。ヘッダ名/日付を確認してください。");
         }
@@ -631,6 +639,7 @@ function render() {
         state.quoteRows = [...sampleQuoteData];
         state.budgetRows = [...sampleBudgetData];
         state.mergedRows = mergeRows(state.quoteRows, state.budgetRows);
+        viewState.appliedBudgetLine = null;
         quotePath.textContent = localStorage.getItem(STORAGE_KEYS.quoteName) || "未指定";
         budgetPath.textContent = localStorage.getItem(STORAGE_KEYS.budgetName) || "未指定";
         refreshCategoryFilter();
@@ -643,6 +652,7 @@ function render() {
         state.quoteRows = [];
         state.budgetRows = [];
         state.mergedRows = [];
+        viewState.appliedBudgetLine = null;
         refreshCategoryFilter();
         refreshModelFilter();
         render();
