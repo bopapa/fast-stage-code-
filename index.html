@@ -250,6 +250,7 @@
       const formatYen = (v) => (v === null || v === undefined || Number.isNaN(v) ? "-" : `¥${v.toLocaleString("ja-JP")}`);
       const formatPct = (v) => (v === null || v === undefined || Number.isNaN(v) ? "-" : `${v > 0 ? "+" : ""}${v.toFixed(1)}%`);
       const normalizeDate = (d) => new Date(d + "T00:00:00");
+      const normalizeText = (v) => String(v || "").normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
 
       function evaluateRule(rate) {
         if (rate === null) return { className: "warn", label: "予算未登録", tone: "warn" };
@@ -260,8 +261,8 @@
 
       function mapQuoteRows(rows) {
         return rows.map((r) => ({
-          category: r["機材区分"] || r.category || "その他",
-          productName: r["商品名"] || r["機材名・型番"] || r.productName || "",
+          category: String(r["機材区分"] || r.category || "その他").trim(),
+          productName: String(r["商品名"] || r["機材名・型番"] || r.productName || "").trim(),
           productCode: r["商品コード"] || r.productCode || "",
           unitPrice: toNumber(r["単価"] || r["見積単価"] || r.unitPrice),
           quoteDate: r["見積日付"] || r["見積の日付"] || r.quoteDate || ""
@@ -269,8 +270,8 @@
       }
       function mapBudgetRows(rows) {
         return rows.map((r) => ({
-          category: r["機材区分"] || r.category || "",
-          productName: r["商品名"] || r["機材名・型番"] || r.productName || "",
+          category: String(r["機材区分"] || r.category || "").trim(),
+          productName: String(r["商品名"] || r["機材名・型番"] || r.productName || "").trim(),
           unitPrice: toNumber(r["単価"] || r["予算単価"] || r.unitPrice)
         })).filter((r) => r.productName && Number.isFinite(r.unitPrice));
       }
@@ -279,14 +280,19 @@
         const byCategoryAndName = new Map(
           budgetRows
             .filter((r) => r.category)
-            .map((r) => [`${r.category}||${r.productName}`, r.unitPrice])
+            .map((r) => [`${normalizeText(r.category)}||${normalizeText(r.productName)}`, r.unitPrice])
         );
-        const byNameOnly = new Map(budgetRows.map((r) => [r.productName, r.unitPrice]));
+        const byNameOnly = new Map(
+          budgetRows.map((r) => [normalizeText(r.productName), r.unitPrice])
+        );
+
         return quoteRows.map((q) => {
-          const key = `${q.category}||${q.productName}`;
+          const key = `${normalizeText(q.category)}||${normalizeText(q.productName)}`;
           const budget = byCategoryAndName.has(key)
             ? byCategoryAndName.get(key)
-            : (byNameOnly.has(q.productName) ? byNameOnly.get(q.productName) : null);
+            : (byNameOnly.has(normalizeText(q.productName))
+                ? byNameOnly.get(normalizeText(q.productName))
+                : null);
           const diff = budget === null ? null : q.unitPrice - budget;
           const rate = budget && budget !== 0 ? (diff / budget) * 100 : null;
           return { ...q, budget, diff, costVarianceRate: rate, judgement: evaluateRule(rate) };
