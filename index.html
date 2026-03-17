@@ -442,13 +442,21 @@ function render() {
 
         const chartRows = buildChartSeries(rows, model);
         const chartRowsSorted = [...chartRows].sort((a, b) => normalizeDate(a.quoteDate) - normalizeDate(b.quoteDate));
-        const budgetLines = (model === "すべて" && category !== "すべて")
-          ? [...new Map(rows.filter((r) => Number.isFinite(r.budget)).map((r) => [r.productName, r.budget])).entries()]
-              .map(([label, value]) => ({ label, value }))
-          : (chartRowsSorted.length && Number.isFinite(chartRowsSorted[chartRowsSorted.length - 1].budget)
-              ? [{ label: chartRowsSorted[chartRowsSorted.length - 1].productName, value: chartRowsSorted[chartRowsSorted.length - 1].budget }]
-              : []);
         const latest = chartRowsSorted[chartRowsSorted.length - 1] || top;
+        const shouldShowCategoryBudgets =
+          (model === "すべて" && category !== "すべて") ||
+          (model !== "すべて" && category === "すべて");
+
+        const targetBudgetCategory = category !== "すべて" ? category : latest.category;
+        const budgetLines = shouldShowCategoryBudgets
+          ? [...new Map(
+              state.budgetRows
+                .filter((b) => b.category === targetBudgetCategory && Number.isFinite(b.unitPrice))
+                .map((b) => [b.productName, b.unitPrice])
+            ).entries()].map(([label, value]) => ({ label, value }))
+          : (Number.isFinite(latest.budget)
+              ? [{ label: latest.productName, value: latest.budget }]
+              : []);
         const prices = chartRowsSorted.map((r) => r.unitPrice);
         const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
         chartItemName.textContent = latest.productName;
