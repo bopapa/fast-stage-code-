@@ -677,8 +677,15 @@ function render() {
       document.getElementById("clear-btn").addEventListener("click", clearData);
       document.getElementById("load-demo-files").addEventListener("click", loadDemoCsvFiles);
       document.getElementById("load-sample").addEventListener("click", loadSample);
-      categoryFilter.addEventListener("change", () => { refreshModelFilter(); render(); });
-      modelFilter.addEventListener("change", render);
+      categoryFilter.addEventListener("change", () => {
+        viewState.appliedBudgetLine = null;
+        refreshModelFilter();
+        render();
+      });
+      modelFilter.addEventListener("change", () => {
+        viewState.appliedBudgetLine = null;
+        render();
+      });
       periodFilter.addEventListener("change", render);
       linkBudgetBtn.addEventListener("click", applyBudgetLinkSelection);
 
