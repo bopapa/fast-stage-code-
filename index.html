@@ -444,16 +444,18 @@ function render() {
         const chartRowsSorted = [...chartRows].sort((a, b) => normalizeDate(a.quoteDate) - normalizeDate(b.quoteDate));
         const latest = chartRowsSorted[chartRowsSorted.length - 1] || top;
         const shouldShowCategoryBudgets =
-          (model === "すべて" && category !== "すべて") ||
-          (model !== "すべて" && category === "すべて");
+          (category === "すべて" && model !== "すべて") ||
+          (category !== "すべて" && model === "すべて");
 
-        const targetBudgetCategory = category !== "すべて" ? category : latest.category;
+        const targetBudgetCategory = category === "すべて" ? latest.category : category;
         const budgetLines = shouldShowCategoryBudgets
           ? [...new Map(
               state.budgetRows
                 .filter((b) => b.category === targetBudgetCategory && Number.isFinite(b.unitPrice))
                 .map((b) => [b.productName, b.unitPrice])
-            ).entries()].map(([label, value]) => ({ label, value }))
+            ).entries()]
+              .sort((a, b) => a[0].localeCompare(b[0], "ja"))
+              .map(([label, value]) => ({ label, value }))
           : (Number.isFinite(latest.budget)
               ? [{ label: latest.productName, value: latest.budget }]
               : []);
@@ -461,7 +463,9 @@ function render() {
         const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
         chartItemName.textContent = latest.productName;
         chartQuote.textContent = formatYen(latest.unitPrice);
-        chartBudget.textContent = formatYen(latest.budget);
+        chartBudget.textContent = shouldShowCategoryBudgets
+          ? `${targetBudgetCategory}区分: ${budgetLines.length}件の予算ライン`
+          : formatYen(latest.budget);
         kpiLow.textContent = formatYen(Math.min(...prices));
         kpiHigh.textContent = formatYen(Math.max(...prices));
         kpiAvg.textContent = `${latest.unitPrice - avg >= 0 ? "+" : ""}${formatYen(latest.unitPrice - avg)}`;
