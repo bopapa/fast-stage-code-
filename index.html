@@ -432,28 +432,34 @@
       }
 
       function applyBudgetLinkSelection() {
+        const category = categoryFilter.value;
+        const model = modelFilter.value || "すべて";
+        const rows = getFilteredRows(category, model);
+        viewState.rowKeys = rows.map((r) => buildRowKey(r));
+        const selectableBudgetLines = deriveBudgetLines(rows, category, model, null);
+
         if (!viewState.rowKeys.length) {
           importStatus.textContent = "表示中の見積データがありません。";
           return;
         }
-        if (!viewState.budgetLines.length) {
+        if (!selectableBudgetLines.length) {
           importStatus.textContent = "適用可能な予算ラインがありません。";
           return;
         }
 
-        let selected = viewState.budgetLines[0];
-        if (viewState.budgetLines.length > 1) {
-          const menu = viewState.budgetLines
+        let selected = selectableBudgetLines[0];
+        if (selectableBudgetLines.length > 1) {
+          const menu = selectableBudgetLines
             .map((b, i) => `${i + 1}: ${b.label} (${formatYen(b.value)})`)
             .join("\n");
           const answer = window.prompt(`適用する予算単価を選択してください（番号）\n${menu}`, "1");
           if (!answer) return;
           const idx = Number(answer) - 1;
-          if (!Number.isInteger(idx) || idx < 0 || idx >= viewState.budgetLines.length) {
+          if (!Number.isInteger(idx) || idx < 0 || idx >= selectableBudgetLines.length) {
             importStatus.textContent = "予算選択番号が不正です。";
             return;
           }
-          selected = viewState.budgetLines[idx];
+          selected = selectableBudgetLines[idx];
         }
 
         const keySet = new Set(viewState.rowKeys);
@@ -471,16 +477,48 @@
         render();
       }
 
-function render() {
-        const category = categoryFilter.value;
-        const model = modelFilter.value || "すべて";
+      function getFilteredRows(category, model) {
         let rows = filterByPeriod([...state.mergedRows]);
         rows = rows.filter((r) => category === "すべて" || r.category === category);
         if (model !== "すべて") {
           rows = rows.filter((r) => r.productName === model);
         }
-
         rows.sort((a, b) => normalizeDate(b.quoteDate) - normalizeDate(a.quoteDate));
+        return rows;
+      }
+
+      function deriveBudgetLines(rows, category, model, appliedBudgetLine = null) {
+        const chartRows = buildChartSeries(rows, model);
+        const chartRowsSorted = [...chartRows].sort((a, b) => normalizeDate(a.quoteDate) - normalizeDate(b.quoteDate));
+        const latest = chartRowsSorted[chartRowsSorted.length - 1] || rows[0];
+        if (!latest) return [];
+
+        const shouldShowCategoryBudgets =
+          (category === "すべて" && model !== "すべて") ||
+          (category !== "すべて" && model === "すべて");
+        const targetBudgetCategory = category === "すべて" ? latest.category : category;
+        let budgetLines = shouldShowCategoryBudgets
+          ? [...new Map(
+              state.budgetRows
+                .filter((b) => b.category === targetBudgetCategory && Number.isFinite(b.unitPrice))
+                .map((b) => [b.productName, b.unitPrice])
+            ).entries()]
+              .sort((a, b) => a[0].localeCompare(b[0], "ja"))
+              .map(([label, value]) => ({ label, value }))
+          : (Number.isFinite(latest.budget)
+              ? [{ label: latest.productName, value: latest.budget }]
+              : []);
+
+        if (appliedBudgetLine) {
+          budgetLines = [appliedBudgetLine];
+        }
+        return budgetLines;
+      }
+
+function render() {
+        const category = categoryFilter.value;
+        const model = modelFilter.value || "すべて";
+        const rows = getFilteredRows(category, model);
 
         viewState.rowKeys = rows.map((r) => buildRowKey(r));
 
@@ -505,26 +543,8 @@ function render() {
         const chartRows = buildChartSeries(rows, model);
         const chartRowsSorted = [...chartRows].sort((a, b) => normalizeDate(a.quoteDate) - normalizeDate(b.quoteDate));
         const latest = chartRowsSorted[chartRowsSorted.length - 1] || top;
-        const shouldShowCategoryBudgets =
-          (category === "すべて" && model !== "すべて") ||
-          (category !== "すべて" && model === "すべて");
-
+        const budgetLines = deriveBudgetLines(rows, category, model, viewState.appliedBudgetLine);
         const targetBudgetCategory = category === "すべて" ? latest.category : category;
-        let budgetLines = shouldShowCategoryBudgets
-          ? [...new Map(
-              state.budgetRows
-                .filter((b) => b.category === targetBudgetCategory && Number.isFinite(b.unitPrice))
-                .map((b) => [b.productName, b.unitPrice])
-            ).entries()]
-              .sort((a, b) => a[0].localeCompare(b[0], "ja"))
-              .map(([label, value]) => ({ label, value }))
-          : (Number.isFinite(latest.budget)
-              ? [{ label: latest.productName, value: latest.budget }]
-              : []);
-
-        if (viewState.appliedBudgetLine) {
-          budgetLines = [viewState.appliedBudgetLine];
-        }
 
         viewState.budgetLines = budgetLines;
         const prices = chartRowsSorted.map((r) => r.unitPrice);
