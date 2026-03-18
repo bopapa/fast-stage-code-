@@ -182,6 +182,17 @@
       .accordion-panel[hidden] {
         display: none;
       }
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .section-header h2 {
+        margin-bottom: 0;
+      }
       .hint {
         color: var(--text-sub);
         font-size: 0.9rem;
@@ -506,7 +517,11 @@
       </div>
 
       <section class="section">
-        <h2>初心者向けかんたんマニュアル</h2>
+        <div class="section-header">
+          <h2>初心者向けかんたんマニュアル</h2>
+          <button id="toggleManualBtn" type="button" class="accordion-toggle collapsed" style="width: auto; margin-bottom: 0;">マニュアルを表示する</button>
+        </div>
+        <div id="manualPanel" class="accordion-panel" hidden>
         <p class="hint">はじめて使う方向けに、場面ごとの操作手順を動くイメージ付きでまとめています。</p>
         <div class="manual-shell">
           <div class="manual-nav">
@@ -621,6 +636,7 @@
               </div>
             </div>
           </div>
+        </div>
         </div>
       </section>
 
@@ -761,6 +777,8 @@
         const importEditorSectionEl = document.getElementById("importEditorSection");
         const manualTabEls = document.querySelectorAll("[data-manual-tab]");
         const manualPanelEls = document.querySelectorAll("[data-manual-panel]");
+        const manualPanelContainerEl = document.getElementById("manualPanel");
+        const toggleManualBtnEl = document.getElementById("toggleManualBtn");
 
         function normalizeCell(value) {
           return String(value ?? "")
@@ -967,6 +985,12 @@
           manualPanelEls.forEach((panelEl) => {
             panelEl.hidden = panelEl.getAttribute("data-manual-panel") !== tabId;
           });
+        }
+
+        function setManualCollapsed(collapsed) {
+          manualPanelContainerEl.hidden = collapsed;
+          toggleManualBtnEl.classList.toggle("collapsed", collapsed);
+          toggleManualBtnEl.textContent = collapsed ? "マニュアルを表示する" : "マニュアルを閉じる";
         }
 
         async function refreshReviewFromTarget() {
@@ -1289,12 +1313,17 @@
           });
         });
 
+        toggleManualBtnEl.addEventListener("click", () => {
+          setManualCollapsed(!manualPanelContainerEl.hidden);
+        });
+
         renderReview();
         renderAttachedEditor();
         renderGrid();
         setReviewCollapsed(false);
         setupProductNameResize();
         setActiveManual("manual-target");
+        setManualCollapsed(true);
         log("ツールを起動しました");
       })();
     </script>
