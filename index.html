@@ -189,6 +189,60 @@
         border-radius: 6px;
         padding: 6px;
       }
+      .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .filter-select {
+        min-width: 220px;
+        border: 1px solid #b7c7e3;
+        border-radius: 6px;
+        padding: 8px 10px;
+        background: #fff;
+        color: var(--text);
+      }
+      .sheet-wrap {
+        overflow: auto;
+        border: 1px solid #d6dfec;
+        border-radius: 8px;
+        background: #fff;
+      }
+      .sheet-table {
+        width: 100%;
+        min-width: 980px;
+      }
+      .sheet-table td {
+        padding: 0;
+      }
+      .sheet-table td.readonly {
+        padding: 8px;
+        background: #f8fbff;
+      }
+      .cell-input {
+        width: 100%;
+        min-width: 120px;
+        border: none;
+        padding: 10px 8px;
+        box-sizing: border-box;
+        background: #fff;
+        font: inherit;
+      }
+      .cell-input:focus {
+        outline: 2px solid rgba(47, 103, 216, 0.25);
+        outline-offset: -2px;
+        background: #f9fbff;
+      }
+      .muted-box {
+        padding: 14px;
+        border: 1px dashed #c9d7ec;
+        border-radius: 8px;
+        color: var(--text-sub);
+        background: #fbfdff;
+      }
     </style>
   </head>
   <body>
@@ -264,6 +318,39 @@
         <h2>レビューエリア</h2>
         <div id="review" class="review"></div>
       </section>
+
+      <section class="section">
+        <h2>取り込みCSV編集エリア</h2>
+        <p class="hint">書き込み対象CSVの読込済みレコードを表示します。機材区分で絞り込み、商品名・商品コード・単価をセル編集後、「上書き保存」でCSVへ保存します。</p>
+        <div class="toolbar">
+          <div class="inline">
+            <label class="label" for="categoryFilter" style="margin-bottom: 0">機材区分で絞り込み：</label>
+            <select id="categoryFilter" class="filter-select">
+              <option value="">すべて表示</option>
+            </select>
+          </div>
+          <div class="inline">
+            <button id="saveGridBtn" type="button" class="btn-primary">上書き保存</button>
+            <span id="gridResult" class="message"></span>
+          </div>
+        </div>
+        <div id="gridEmpty" class="muted-box">書き込み対象CSVファイルを選択すると、ここに編集テーブルが表示されます。</div>
+        <div id="gridWrap" class="sheet-wrap" hidden>
+          <table class="sheet-table">
+            <thead>
+              <tr>
+                <th>レコード番号</th>
+                <th>機材区分</th>
+                <th>商品名（編集可）</th>
+                <th>商品コード（編集可）</th>
+                <th>単価（編集可）</th>
+                <th>見積日付</th>
+              </tr>
+            </thead>
+            <tbody id="gridBody"></tbody>
+          </table>
+        </div>
+      </section>
     </div>
 
     <script>
@@ -274,10 +361,13 @@
         let targetHandle = null;
         let attachedCsvFile = null;
         let attachedCsvRows = [];
+        let targetDataRows = [];
+        let currentFilterValue = "";
 
         const targetFileNameEl = document.getElementById("targetFileName");
         const textResultEl = document.getElementById("textResult");
         const fileResultEl = document.getElementById("fileResult");
+        const gridResultEl = document.getElementById("gridResult");
         const commonLogEl = document.getElementById("commonLog");
         const reviewEl = document.getElementById("review");
         const attachedFileEl = document.getElementById("attachedFile");
@@ -285,6 +375,10 @@
         const editorBodyEl = document.getElementById("editorBody");
         const attachInputEl = document.getElementById("attachInput");
         const textInputEl = document.getElementById("textInput");
+        const categoryFilterEl = document.getElementById("categoryFilter");
+        const gridBodyEl = document.getElementById("gridBody");
+        const gridWrapEl = document.getElementById("gridWrap");
+        const gridEmptyEl = document.getElementById("gridEmpty");
 
         function normalizeCell(value) {
           return String(value ?? "")
@@ -390,9 +484,74 @@
           reviewEl.textContent = lines.join("\n");
         }
 
+        function renderCategoryFilter() {
+          const categories = [...new Set(targetDataRows.map((row) => row[0]).filter(Boolean))].sort((a, b) =>
+            a.localeCompare(b, "ja")
+          );
+          categoryFilterEl.innerHTML = [`<option value="">すべて表示</option>`]
+            .concat(categories.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`))
+            .join("");
+          categoryFilterEl.value = categories.includes(currentFilterValue) ? currentFilterValue : "";
+          currentFilterValue = categoryFilterEl.value;
+        }
+
+        function renderGrid() {
+          renderCategoryFilter();
+
+          if (targetDataRows.length === 0) {
+            gridWrapEl.hidden = true;
+            gridEmptyEl.hidden = false;
+            gridEmptyEl.textContent = "書き込み対象CSVのレコードはまだありません。";
+            gridBodyEl.innerHTML = "";
+            return;
+          }
+
+          const filteredRows = targetDataRows
+            .map((row, index) => ({ row, index }))
+            .filter(({ row }) => !currentFilterValue || row[0] === currentFilterValue);
+
+          if (filteredRows.length === 0) {
+            gridWrapEl.hidden = true;
+            gridEmptyEl.hidden = false;
+            gridEmptyEl.textContent = "選択中の機材区分に一致するレコードはありません。";
+            gridBodyEl.innerHTML = "";
+            return;
+          }
+
+          gridEmptyEl.hidden = true;
+          gridWrapEl.hidden = false;
+          gridBodyEl.innerHTML = filteredRows
+            .map(
+              ({ row, index }) => `
+                <tr>
+                  <td class="readonly">${index + 1}</td>
+                  <td class="readonly">${escapeHtml(row[0])}</td>
+                  <td><input class="cell-input" type="text" data-row-index="${index}" data-col-index="1" value="${escapeHtml(row[1])}" /></td>
+                  <td><input class="cell-input" type="text" data-row-index="${index}" data-col-index="2" value="${escapeHtml(row[2])}" /></td>
+                  <td><input class="cell-input" type="text" data-row-index="${index}" data-col-index="3" value="${escapeHtml(row[3])}" /></td>
+                  <td class="readonly">${escapeHtml(row[4])}</td>
+                </tr>
+              `
+            )
+            .join("");
+        }
+
+        function syncGridEdits() {
+          const inputs = gridBodyEl.querySelectorAll("input[data-row-index][data-col-index]");
+          inputs.forEach((input) => {
+            const rowIndex = Number(input.getAttribute("data-row-index"));
+            const colIndex = Number(input.getAttribute("data-col-index"));
+            if (targetDataRows[rowIndex]) {
+              targetDataRows[rowIndex][colIndex] = normalizeCell(input.value);
+            }
+          });
+        }
+
         async function refreshReviewFromTarget() {
           if (!targetHandle) {
             renderReview();
+            targetDataRows = [];
+            renderGrid();
             return;
           }
 
@@ -408,6 +567,8 @@
           }
 
           renderReview(baseRows);
+          targetDataRows = baseRows.slice(1).map((row) => row.slice());
+          renderGrid();
         }
 
         async function readTargetRows() {
@@ -519,6 +680,8 @@
           await writable.close();
 
           renderReview(mergedRows);
+          targetDataRows = mergedRows.slice(1).map((row) => row.slice());
+          renderGrid();
           log(`${sourceLabel}: ${inputRows.length}件を追記しました`);
           return inputRows.length;
         }
@@ -561,6 +724,10 @@
           targetHandle = null;
           targetFileNameEl.textContent = "未選択";
           renderReview();
+          targetDataRows = [];
+          currentFilterValue = "";
+          renderGrid();
+          setResult(gridResultEl, "", false);
           log("書き込み先ファイル指定をクリアしました");
         });
 
@@ -656,8 +823,39 @@
           log("添付CSVファイル指定をクリアしました");
         });
 
+        categoryFilterEl.addEventListener("change", () => {
+          syncGridEdits();
+          currentFilterValue = categoryFilterEl.value;
+          renderGrid();
+        });
+
+        document.getElementById("saveGridBtn").addEventListener("click", async () => {
+          setResult(gridResultEl, "", false);
+          try {
+            if (!targetHandle) {
+              throw new Error("書き込むCSVファイルを指定してください");
+            }
+
+            syncGridEdits();
+            const rowsToSave = [EXPECTED_HEADER.slice(), ...targetDataRows.map((row) => row.map((cell) => normalizeCell(cell)))];
+            const csvOut = rowsToCsv(rowsToSave);
+            const writable = await targetHandle.createWritable();
+            await writable.write(csvOut);
+            await writable.close();
+
+            renderReview(rowsToSave);
+            renderGrid();
+            setResult(gridResultEl, "正常終了: 編集内容を上書き保存しました", false);
+            log("編集テーブルの内容を上書き保存しました");
+          } catch (err) {
+            setResult(gridResultEl, `書き込みエラー: ${err.message}`, true);
+            log(`編集テーブル保存エラー: ${err.message}`);
+          }
+        });
+
         renderReview();
         renderAttachedEditor();
+        renderGrid();
         log("ツールを起動しました");
       })();
     </script>
