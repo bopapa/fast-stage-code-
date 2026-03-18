@@ -1103,7 +1103,7 @@
 
         async function appendRows(inputRows, sourceLabel) {
           const allRows = await readTargetRows();
-          let baseRows = allRows.map((r) => r.map((c) => normalizeCell(c)));
+          let baseRows = allRows.map((r) => r.slice());
 
           if (baseRows.length === 0) {
             baseRows = [EXPECTED_HEADER.slice()];
@@ -1113,7 +1113,9 @@
             throw new Error("書き込み対象CSVのヘッダーが想定と異なります");
           }
 
-          const existingData = baseRows.slice(1);
+          const existingData = baseRows
+            .slice(1)
+            .map((row) => row.map((cell) => normalizeCell(cell)));
           if (containsDuplicate(existingData, inputRows)) {
             throw new Error("既にこの情報は存在します");
           }
