@@ -42,6 +42,19 @@
         font-size: 1.6rem;
         color: #183055;
       }
+      .hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .hero-text {
+        flex: 1 1 520px;
+      }
+      .hero-action {
+        flex: 0 0 auto;
+      }
       h2 {
         margin: 0 0 10px;
         font-size: 1.1rem;
@@ -292,8 +305,15 @@
   </head>
   <body>
     <div class="container">
-      <h1>トラッカー用CSVデータ書き込みツール</h1>
-      <p class="hint" style="margin-top: 0; margin-bottom: 14px">業務で使いやすい配色・操作導線に調整したCSV追記ツールです。</p>
+      <div class="hero">
+        <div class="hero-text">
+          <h1>トラッカー用CSVデータ書き込み・編集ツール</h1>
+          <p class="hint" style="margin-top: 0; margin-bottom: 14px">range機材価格トラッカー用DB-CSV追記・編集ツールです</p>
+        </div>
+        <div class="hero-action">
+          <button id="jumpToEditorBtn" type="button" class="btn-secondary">取り込みCSV編集エリアへ移動</button>
+        </div>
+      </div>
 
       <div class="field">
         <label class="label">書き込むCSVファイル指定：</label>
@@ -367,7 +387,7 @@
         </div>
       </section>
 
-      <section class="section">
+      <section id="importEditorSection" class="section">
         <h2>取り込みCSV編集エリア</h2>
         <p class="hint">書き込み対象CSVの読込済みレコードを表示します。機材区分で絞り込み、商品名・商品コード・単価をセル編集後、「上書き保存」でCSVへ保存します。</p>
         <div class="toolbar">
@@ -439,6 +459,7 @@
         const gridEmptyEl = document.getElementById("gridEmpty");
         const productNameColEl = document.getElementById("productNameCol");
         const productNameResizerEl = document.getElementById("productNameResizer");
+        const importEditorSectionEl = document.getElementById("importEditorSection");
 
         function normalizeCell(value) {
           return String(value ?? "")
@@ -946,6 +967,10 @@
 
         toggleReviewBtnEl.addEventListener("click", () => {
           setReviewCollapsed(!reviewPanelEl.hidden);
+        });
+
+        document.getElementById("jumpToEditorBtn").addEventListener("click", () => {
+          importEditorSectionEl.scrollIntoView({ behavior: "smooth", block: "start" });
         });
 
         renderReview();
