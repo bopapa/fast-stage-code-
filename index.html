@@ -301,6 +301,186 @@
         color: var(--text-sub);
         background: #fbfdff;
       }
+      .manual-shell {
+        display: grid;
+        grid-template-columns: minmax(260px, 320px) 1fr;
+        gap: 16px;
+      }
+      .manual-nav {
+        display: grid;
+        gap: 10px;
+      }
+      .manual-tab {
+        text-align: left;
+        border: 1px solid #d7e0ee;
+        background: #f8fbff;
+        color: #1f3a63;
+      }
+      .manual-tab.active {
+        background: linear-gradient(180deg, #2f67d8 0%, #2351b2 100%);
+        color: #fff;
+      }
+      .manual-panel {
+        border: 1px solid #d7e0ee;
+        border-radius: 10px;
+        background: #fff;
+        padding: 16px;
+      }
+      .manual-panel[hidden] {
+        display: none;
+      }
+      .manual-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 18px;
+        align-items: start;
+      }
+      .manual-steps {
+        margin: 0;
+        padding-left: 18px;
+        line-height: 1.8;
+      }
+      .manual-note {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-left: 4px solid #2f67d8;
+        background: #f5f9ff;
+        color: #355178;
+        border-radius: 6px;
+      }
+      .demo-card {
+        border: 1px solid #d6dfec;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 8px 18px rgba(18, 35, 66, 0.08);
+      }
+      .demo-bar {
+        padding: 8px 12px;
+        background: #eef4ff;
+        color: #244268;
+        font-weight: 700;
+        font-size: 0.9rem;
+      }
+      .demo-body {
+        padding: 14px;
+      }
+      .demo-field {
+        height: 18px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #e8eef8 0%, #f5f8fd 100%);
+        margin-bottom: 10px;
+      }
+      .demo-field.primary {
+        width: 78%;
+      }
+      .demo-field.secondary {
+        width: 52%;
+      }
+      .demo-button-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .demo-button {
+        padding: 8px 10px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+      .demo-button.primary {
+        background: #2f67d8;
+        color: #fff;
+      }
+      .demo-button.secondary {
+        background: #eaf0fa;
+        color: #244268;
+      }
+      .drop-demo {
+        min-height: 190px;
+        border: 2px dashed #94add9;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+        position: relative;
+        overflow: hidden;
+      }
+      .drop-demo::before {
+        content: "CSV";
+        position: absolute;
+        top: 24px;
+        left: 28px;
+        width: 62px;
+        height: 78px;
+        display: grid;
+        place-items: center;
+        background: #ffffff;
+        border: 1px solid #cbd8eb;
+        border-radius: 10px;
+        color: #2f67d8;
+        font-weight: 800;
+        box-shadow: 0 8px 14px rgba(34, 63, 105, 0.12);
+        animation: floatFile 2.6s ease-in-out infinite;
+      }
+      .drop-demo::after {
+        content: "ここへドラッグ＆ドロップ";
+        position: absolute;
+        right: 20px;
+        bottom: 22px;
+        color: #30507d;
+        font-weight: 700;
+        font-size: 0.95rem;
+      }
+      .drop-arrow {
+        position: absolute;
+        left: 96px;
+        top: 56px;
+        font-size: 1.8rem;
+        color: #2f67d8;
+        animation: slideArrow 2.6s ease-in-out infinite;
+      }
+      .scene-table {
+        display: grid;
+        gap: 6px;
+      }
+      .scene-row {
+        display: grid;
+        grid-template-columns: 72px 1fr 120px 90px;
+        gap: 6px;
+      }
+      .scene-cell {
+        height: 34px;
+        border-radius: 6px;
+        background: #f8fbff;
+        border: 1px solid #d7e0ee;
+      }
+      .scene-cell.editing {
+        background: #ffffff;
+        box-shadow: inset 0 0 0 2px rgba(47, 103, 216, 0.25);
+        animation: pulseCell 2.4s ease-in-out infinite;
+      }
+      .scene-caption {
+        margin-top: 10px;
+        color: #466182;
+        font-size: 0.9rem;
+      }
+      @keyframes floatFile {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(14px, 10px); }
+      }
+      @keyframes slideArrow {
+        0%, 100% { transform: translateX(0); opacity: 0.45; }
+        50% { transform: translateX(18px); opacity: 1; }
+      }
+      @keyframes pulseCell {
+        0%, 100% { box-shadow: inset 0 0 0 2px rgba(47, 103, 216, 0.2); }
+        50% { box-shadow: inset 0 0 0 2px rgba(47, 103, 216, 0.45); }
+      }
+      @media (max-width: 860px) {
+        .manual-shell,
+        .manual-grid {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
   <body>
@@ -324,6 +504,125 @@
         </div>
         <p class="hint">Chrome/Edge で動作します。選択したCSVに追記し、上書き保存します。</p>
       </div>
+
+      <section class="section">
+        <h2>初心者向けかんたんマニュアル</h2>
+        <p class="hint">はじめて使う方向けに、場面ごとの操作手順を動くイメージ付きでまとめています。</p>
+        <div class="manual-shell">
+          <div class="manual-nav">
+            <button type="button" class="manual-tab active" data-manual-tab="manual-target">1. 最初にやること</button>
+            <button type="button" class="manual-tab" data-manual-tab="manual-text">2. テキストで追加する</button>
+            <button type="button" class="manual-tab" data-manual-tab="manual-file">3. CSVを添付して追加する</button>
+            <button type="button" class="manual-tab" data-manual-tab="manual-edit">4. 取り込みCSVを編集して保存する</button>
+          </div>
+          <div class="manual-panel" data-manual-panel="manual-target">
+            <div class="manual-grid">
+              <div>
+                <ol class="manual-steps">
+                  <li>画面上部の <strong>「CSVファイルを選択」</strong> を押します。</li>
+                  <li>書き込み先にしたいCSVファイルを選びます。</li>
+                  <li>選択が終わると、レビューエリアと取り込みCSV編集エリアに内容が表示されます。</li>
+                </ol>
+                <div class="manual-note">まずは「書き込み先CSV」を選ぶのがスタートです。選ばないと追加・保存はできません。</div>
+              </div>
+              <div class="demo-card">
+                <div class="demo-bar">場面イメージ：最初の選択</div>
+                <div class="demo-body">
+                  <div class="demo-field primary"></div>
+                  <div class="demo-field secondary"></div>
+                  <div class="demo-button-row">
+                    <div class="demo-button primary">CSVファイルを選択</div>
+                    <div class="demo-button secondary">ファイル指定クリア</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="manual-panel" data-manual-panel="manual-text" hidden>
+            <div class="manual-grid">
+              <div>
+                <ol class="manual-steps">
+                  <li>「テキストで書き込み」欄に、1行1レコードでカンマ区切り入力します。</li>
+                  <li>ヘッダー行が含まれていても、自動で除外されます。</li>
+                  <li><strong>「追加」</strong> を押すと、指定中のCSVへ追記保存されます。</li>
+                </ol>
+                <div class="manual-note">例：<code>機材A,商品A,CODE001,1000,2026-03-18</code></div>
+              </div>
+              <div class="demo-card">
+                <div class="demo-bar">場面イメージ：テキスト入力</div>
+                <div class="demo-body">
+                  <div style="height: 98px; border: 1px solid #d6dfec; border-radius: 8px; background: linear-gradient(180deg, #fff 0%, #fafcff 100%); padding: 10px; font-family: monospace; color: #445c7d;">
+                    機材A,商品A,CODE001,1000,2026-03-18<br />
+                    機材B,商品B,CODE002,2500,2026-03-18
+                  </div>
+                  <div class="demo-button-row">
+                    <div class="demo-button primary">追加</div>
+                    <div class="demo-button secondary">テキストクリア</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="manual-panel" data-manual-panel="manual-file" hidden>
+            <div class="manual-grid">
+              <div>
+                <ol class="manual-steps">
+                  <li>CSVファイルをドラッグ＆ドロップ、またはファイル選択で添付します。</li>
+                  <li>添付後、必要なら上側レビューで内容を確認します。</li>
+                  <li><strong>「追加」</strong> を押すと、添付CSVのレコードが書き込み先CSVに追記されます。</li>
+                </ol>
+                <div class="manual-note">ファイル添付のイメージを右に表示しています。1ファイルのみ添付できます。</div>
+              </div>
+              <div class="demo-card">
+                <div class="demo-bar">場面イメージ：CSV添付</div>
+                <div class="demo-body">
+                  <div class="drop-demo">
+                    <div class="drop-arrow">→</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="manual-panel" data-manual-panel="manual-edit" hidden>
+            <div class="manual-grid">
+              <div>
+                <ol class="manual-steps">
+                  <li>画面下部の <strong>「取り込みCSV編集エリア」</strong> で機材区分を絞り込みます。</li>
+                  <li>表のセルをExcelのように直接編集します。コピー＆ペーストも可能です。</li>
+                  <li>編集が終わったら <strong>「上書き保存」</strong> を押します。</li>
+                </ol>
+                <div class="manual-note">編集できるのは現在、機材区分・商品名・商品コード・単価です。保存すると選択中CSVへ上書きされます。</div>
+              </div>
+              <div class="demo-card">
+                <div class="demo-bar">場面イメージ：セル編集</div>
+                <div class="demo-body">
+                  <div class="scene-table">
+                    <div class="scene-row">
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell editing"></div>
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell"></div>
+                    </div>
+                    <div class="scene-row">
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell editing"></div>
+                      <div class="scene-cell"></div>
+                    </div>
+                    <div class="scene-row">
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell editing"></div>
+                    </div>
+                  </div>
+                  <div class="scene-caption">青く光るセルが、いま編集しているイメージです。</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section class="section">
         <h2>テキストで書き込み</h2>
@@ -460,6 +759,8 @@
         const productNameColEl = document.getElementById("productNameCol");
         const productNameResizerEl = document.getElementById("productNameResizer");
         const importEditorSectionEl = document.getElementById("importEditorSection");
+        const manualTabEls = document.querySelectorAll("[data-manual-tab]");
+        const manualPanelEls = document.querySelectorAll("[data-manual-panel]");
 
         function normalizeCell(value) {
           return String(value ?? "")
@@ -656,6 +957,15 @@
             startWidth = productNameColEl.getBoundingClientRect().width;
             window.addEventListener("pointermove", onPointerMove);
             window.addEventListener("pointerup", onPointerUp);
+          });
+        }
+
+        function setActiveManual(tabId) {
+          manualTabEls.forEach((tabEl) => {
+            tabEl.classList.toggle("active", tabEl.getAttribute("data-manual-tab") === tabId);
+          });
+          manualPanelEls.forEach((panelEl) => {
+            panelEl.hidden = panelEl.getAttribute("data-manual-panel") !== tabId;
           });
         }
 
@@ -973,11 +1283,18 @@
           importEditorSectionEl.scrollIntoView({ behavior: "smooth", block: "start" });
         });
 
+        manualTabEls.forEach((tabEl) => {
+          tabEl.addEventListener("click", () => {
+            setActiveManual(tabEl.getAttribute("data-manual-tab"));
+          });
+        });
+
         renderReview();
         renderAttachedEditor();
         renderGrid();
         setReviewCollapsed(false);
         setupProductNameResize();
+        setActiveManual("manual-target");
         log("ツールを起動しました");
       })();
     </script>
