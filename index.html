@@ -416,7 +416,7 @@
             <thead>
               <tr>
                 <th>レコード番号</th>
-                <th>機材区分</th>
+                <th>機材区分（編集可）</th>
                 <th class="resizable">商品名（編集可）<span id="productNameResizer" class="column-resizer" aria-hidden="true"></span></th>
                 <th>商品コード（編集可）</th>
                 <th>単価（編集可）</th>
@@ -612,7 +612,7 @@
               ({ row, index }) => `
                 <tr>
                   <td class="readonly">${index + 1}</td>
-                  <td class="readonly">${escapeHtml(row[0])}</td>
+                  <td><input class="cell-input" type="text" data-row-index="${index}" data-col-index="0" value="${escapeHtml(row[0])}" /></td>
                   <td><input class="cell-input" type="text" data-row-index="${index}" data-col-index="1" value="${escapeHtml(row[1])}" /></td>
                   <td><input class="cell-input" type="text" data-row-index="${index}" data-col-index="2" value="${escapeHtml(row[2])}" /></td>
                   <td><input class="cell-input" type="text" data-row-index="${index}" data-col-index="3" value="${escapeHtml(row[3])}" /></td>
