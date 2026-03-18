@@ -149,6 +149,26 @@
         white-space: pre-wrap;
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       }
+      .accordion-toggle {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #eef4ff;
+        color: #213f69;
+        border: 1px solid #d6dfec;
+        margin-bottom: 10px;
+      }
+      .accordion-toggle::after {
+        content: "▲";
+        font-size: 0.8rem;
+      }
+      .accordion-toggle.collapsed::after {
+        content: "▼";
+      }
+      .accordion-panel[hidden] {
+        display: none;
+      }
       .hint {
         color: var(--text-sub);
         font-size: 0.9rem;
@@ -316,7 +336,10 @@
 
       <section class="section">
         <h2>レビューエリア</h2>
-        <div id="review" class="review"></div>
+        <button id="toggleReviewBtn" type="button" class="accordion-toggle">レビュー表示を折りたたむ</button>
+        <div id="reviewPanel" class="accordion-panel">
+          <div id="review" class="review"></div>
+        </div>
       </section>
 
       <section class="section">
@@ -370,6 +393,8 @@
         const gridResultEl = document.getElementById("gridResult");
         const commonLogEl = document.getElementById("commonLog");
         const reviewEl = document.getElementById("review");
+        const reviewPanelEl = document.getElementById("reviewPanel");
+        const toggleReviewBtnEl = document.getElementById("toggleReviewBtn");
         const attachedFileEl = document.getElementById("attachedFile");
         const attachedEditorEl = document.getElementById("attachedEditor");
         const editorBodyEl = document.getElementById("editorBody");
@@ -482,6 +507,12 @@
           });
 
           reviewEl.textContent = lines.join("\n");
+        }
+
+        function setReviewCollapsed(collapsed) {
+          reviewPanelEl.hidden = collapsed;
+          toggleReviewBtnEl.classList.toggle("collapsed", collapsed);
+          toggleReviewBtnEl.textContent = collapsed ? "レビュー表示を展開する" : "レビュー表示を折りたたむ";
         }
 
         function renderCategoryFilter() {
@@ -853,9 +884,14 @@
           }
         });
 
+        toggleReviewBtnEl.addEventListener("click", () => {
+          setReviewCollapsed(!reviewPanelEl.hidden);
+        });
+
         renderReview();
         renderAttachedEditor();
         renderGrid();
+        setReviewCollapsed(false);
         log("ツールを起動しました");
       })();
     </script>
