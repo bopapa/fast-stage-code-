@@ -234,6 +234,7 @@
       .sheet-table {
         width: 100%;
         min-width: 980px;
+        table-layout: fixed;
       }
       .sheet-table td {
         padding: 0;
@@ -255,6 +256,29 @@
         outline: 2px solid rgba(47, 103, 216, 0.25);
         outline-offset: -2px;
         background: #f9fbff;
+      }
+      .sheet-table th.resizable {
+        position: relative;
+      }
+      .column-resizer {
+        position: absolute;
+        top: 0;
+        right: -3px;
+        width: 8px;
+        height: 100%;
+        cursor: col-resize;
+        user-select: none;
+        touch-action: none;
+      }
+      .column-resizer::before {
+        content: "";
+        position: absolute;
+        top: 6px;
+        bottom: 6px;
+        left: 3px;
+        width: 2px;
+        border-radius: 999px;
+        background: #9fb4d8;
       }
       .muted-box {
         padding: 14px;
@@ -360,11 +384,19 @@
         <div id="gridEmpty" class="muted-box">書き込み対象CSVファイルを選択すると、ここに編集テーブルが表示されます。</div>
         <div id="gridWrap" class="sheet-wrap" hidden>
           <table class="sheet-table">
+            <colgroup>
+              <col style="width: 110px" />
+              <col style="width: 160px" />
+              <col id="productNameCol" style="width: 360px" />
+              <col style="width: 140px" />
+              <col style="width: 110px" />
+              <col style="width: 150px" />
+            </colgroup>
             <thead>
               <tr>
                 <th>レコード番号</th>
                 <th>機材区分</th>
-                <th>商品名（編集可）</th>
+                <th class="resizable">商品名（編集可）<span id="productNameResizer" class="column-resizer" aria-hidden="true"></span></th>
                 <th>商品コード（編集可）</th>
                 <th>単価（編集可）</th>
                 <th>見積日付</th>
@@ -404,6 +436,8 @@
         const gridBodyEl = document.getElementById("gridBody");
         const gridWrapEl = document.getElementById("gridWrap");
         const gridEmptyEl = document.getElementById("gridEmpty");
+        const productNameColEl = document.getElementById("productNameCol");
+        const productNameResizerEl = document.getElementById("productNameResizer");
 
         function normalizeCell(value) {
           return String(value ?? "")
@@ -575,6 +609,31 @@
             if (targetDataRows[rowIndex]) {
               targetDataRows[rowIndex][colIndex] = normalizeCell(input.value);
             }
+          });
+        }
+
+        function setupProductNameResize() {
+          if (!productNameColEl || !productNameResizerEl) return;
+
+          let startX = 0;
+          let startWidth = 0;
+
+          const onPointerMove = (event) => {
+            const nextWidth = Math.max(220, startWidth + (event.clientX - startX));
+            productNameColEl.style.width = `${nextWidth}px`;
+          };
+
+          const onPointerUp = () => {
+            window.removeEventListener("pointermove", onPointerMove);
+            window.removeEventListener("pointerup", onPointerUp);
+          };
+
+          productNameResizerEl.addEventListener("pointerdown", (event) => {
+            event.preventDefault();
+            startX = event.clientX;
+            startWidth = productNameColEl.getBoundingClientRect().width;
+            window.addEventListener("pointermove", onPointerMove);
+            window.addEventListener("pointerup", onPointerUp);
           });
         }
 
@@ -892,6 +951,7 @@
         renderAttachedEditor();
         renderGrid();
         setReviewCollapsed(false);
+        setupProductNameResize();
         log("ツールを起動しました");
       })();
     </script>
