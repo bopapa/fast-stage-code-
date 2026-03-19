@@ -61,6 +61,23 @@
       .path-view { font-size:.78rem; color:#6a7891; margin-top:2px; word-break:break-all; }
       .list-header { display:flex; align-items:center; justify-content:space-between; gap:10px; }
       .link-action { background:none; border:0; color:#1859ff; font-size:.85rem; cursor:pointer; text-decoration:underline; padding:0; }
+      .top-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+      .secondary { display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--text); padding:10px 14px; font-weight:600; cursor:pointer; }
+      .sharepoint-note { margin-top:12px; border:1px solid #cfe0ff; background:#f5f8ff; color:#35507e; border-radius:10px; padding:10px 12px; font-size:.84rem; line-height:1.5; }
+      dialog { border:0; border-radius:16px; padding:0; width:min(920px, calc(100% - 24px)); box-shadow:0 20px 50px rgba(18,34,66,.28); }
+      dialog::backdrop { background:rgba(20,32,51,.45); }
+      .manual-shell { padding:20px; background:#f6f8fd; }
+      .manual-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px; }
+      .manual-header h2 { margin:0 0 6px; }
+      .manual-header p { margin:0; color:var(--muted); }
+      .manual-close { border:1px solid var(--line); background:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; }
+      .manual-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+      .manual-card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; }
+      .manual-card h3 { margin:0 0 8px; font-size:1rem; }
+      .manual-card p, .manual-card li { color:var(--muted); line-height:1.55; }
+      .manual-card ol, .manual-card ul { margin:8px 0 0; padding-left:18px; }
+      .scene-preview { margin-top:10px; border:1px solid #dde6f6; border-radius:12px; background:#fbfcff; padding:10px; }
+      .scene-preview svg { width:100%; height:auto; display:block; }
     </style>
   </head>
   <body>
@@ -70,8 +87,8 @@
         <h1>機材価格トラッカー</h1>
         <p class="subtitle">見積取得後の購入判断向け 機能モック</p>
       </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-        <a href="./user_manual.html" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; text-decoration:none; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--text); padding:10px 14px; font-weight:600;">使い方マニュアル</a>
+      <div class="top-actions">
+        <button type="button" class="secondary" id="help-btn">使い方マニュアル</button>
         <button type="button" class="primary" id="load-sample">サンプルデータに戻す</button>
       </div>
     </header>
@@ -125,11 +142,14 @@
         <div class="quick-tags">
           <button type="button" id="import-btn">見積CSV・予算CSVを突合して表示</button>
           <button type="button" id="clear-btn">取り込み結果をクリア</button>
-          <button type="button" id="load-demo-files">デモCSVを読み込む</button>
+          <button type="button" id="load-demo-files">内蔵デモデータを読み込む</button>
         </div>
 
         <div class="notice" id="import-status">未取り込み（サンプル表示中）</div>
         <div class="rule-note">自動判定ルール: 予算比 ≤0%「購入可」 / 0%超〜5%「要確認」 / 5%超「再検討」</div>
+        <div class="sharepoint-note">
+          SharePoint 配布向けに、この画面は <strong>単体HTMLで完結</strong> するようにしてあります。デモ動作は「内蔵デモデータを読み込む」で確認できます。
+        </div>
       </aside>
 
       <section class="panel chart-panel">
@@ -186,6 +206,48 @@
       </section>
     </main>
 
+    <dialog id="help-dialog">
+      <div class="manual-shell">
+        <div class="manual-header">
+          <div>
+            <h2>初心者向け かんたんマニュアル</h2>
+            <p>SharePoint 配布を意識して、このファイル1つで操作説明も確認できるようにまとめています。</p>
+          </div>
+          <button type="button" class="manual-close" id="help-close-btn">閉じる</button>
+        </div>
+        <div class="manual-grid">
+          <section class="manual-card">
+            <h3>STEP 1: CSVを指定する</h3>
+            <p>左側の「見積ファイルを指定」「予算ファイルを指定」を押してCSVを選択します。SharePoint 上で見本を試すだけなら、内蔵デモデータだけで確認できます。</p>
+            <div class="scene-preview" id="manual-scene-upload"></div>
+          </section>
+          <section class="manual-card">
+            <h3>STEP 2: 比較結果を見る</h3>
+            <ol>
+              <li>「見積CSV・予算CSVを突合して表示」を押す。</li>
+              <li>右側のグラフで見積推移と予算ラインを見る。</li>
+              <li>下の一覧で差額・判定・乖離率を確認する。</li>
+            </ol>
+            <div class="scene-preview" id="manual-scene-compare"></div>
+          </section>
+          <section class="manual-card">
+            <h3>STEP 3: 予算単価を適用する</h3>
+            <p>機材区分や機材名・型番で絞り込んだあと、「予算単価を適用」を押して候補番号を選びます。</p>
+            <div class="scene-preview" id="manual-scene-apply"></div>
+          </section>
+          <section class="manual-card">
+            <h3>SharePointでの最小運用</h3>
+            <ul>
+              <li>配布対象は <strong>index.html の1ファイル</strong> に集約。</li>
+              <li>デモ確認は内蔵サンプルで完結。</li>
+              <li>実運用は利用者が手元のCSVを選択して読み込む。</li>
+            </ul>
+            <p>※ SharePoint 側の制限でHTML直接表示が抑止される場合は、同じファイルを静的ホストへ置いて SharePoint からリンクするのが最も簡単です。</p>
+          </section>
+        </div>
+      </div>
+    </dialog>
+
     <script>
       const sampleQuoteData = [
         { category: "カメラ", productName: "Sony FX3 ボディ", productCode: "CAM-FX3", unitPrice: 472000, quoteDate: "2026-02-20" },
@@ -224,9 +286,38 @@
       const chartXAxis = document.getElementById("chart-x-axis");
       const chartYAxis = document.getElementById("chart-y-axis");
       const linkBudgetBtn = document.getElementById("link-budget-btn");
+      const helpBtn = document.getElementById("help-btn");
+      const helpDialog = document.getElementById("help-dialog");
+      const helpCloseBtn = document.getElementById("help-close-btn");
 
       let state = { quoteRows: [...sampleQuoteData], budgetRows: [...sampleBudgetData], mergedRows: [] };
       let viewState = { rowKeys: [], budgetLines: [], appliedBudgetLine: null };
+
+      function createManualScene(title, accent) {
+        return `
+          <svg viewBox="0 0 480 250" aria-hidden="true">
+            <rect x="0" y="0" width="480" height="250" rx="16" fill="#f7faff"></rect>
+            <rect x="18" y="20" width="444" height="42" rx="10" fill="#ffffff" stroke="#dce6f6"></rect>
+            <circle cx="38" cy="41" r="7" fill="${accent}"></circle>
+            <rect x="56" y="32" width="150" height="14" rx="7" fill="#dfe9ff"></rect>
+            <rect x="18" y="78" width="136" height="150" rx="12" fill="#ffffff" stroke="#dce6f6"></rect>
+            <rect x="174" y="78" width="288" height="150" rx="12" fill="#ffffff" stroke="#dce6f6"></rect>
+            <rect x="32" y="96" width="108" height="24" rx="6" fill="#eef4ff"></rect>
+            <rect x="32" y="132" width="108" height="24" rx="6" fill="#eef4ff"></rect>
+            <rect x="32" y="168" width="108" height="24" rx="6" fill="#eef4ff"></rect>
+            <polyline points="198,188 238,156 282,168 326,122 370,136 418,104" fill="none" stroke="${accent}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+            <line x1="196" y1="198" x2="426" y2="198" stroke="#dce6f6" stroke-width="2"></line>
+            <rect x="256" y="88" width="180" height="28" rx="8" fill="#f6f8ff" stroke="${accent}"></rect>
+            <text x="268" y="107" fill="#38527f" font-size="13" font-family="sans-serif">${title}</text>
+          </svg>
+        `;
+      }
+
+      function renderManualScenes() {
+        document.getElementById("manual-scene-upload").innerHTML = createManualScene("CSVを選択する画面", "#4f83ff");
+        document.getElementById("manual-scene-compare").innerHTML = createManualScene("比較結果の確認画面", "#22a36d");
+        document.getElementById("manual-scene-apply").innerHTML = createManualScene("予算単価の適用画面", "#e8794a");
+      }
 
       function openDb() {
         return new Promise((resolve, reject) => {
@@ -630,17 +721,18 @@ function render() {
 
       async function loadDemoCsvFiles() {
         try {
-          const [quoteRes, budgetRes] = await Promise.all([fetch("./demo_quote.csv"), fetch("./demo_budget.csv")]);
-          if (!quoteRes.ok || !budgetRes.ok) {
-            throw new Error("demo_quote.csv / demo_budget.csv が同じフォルダに見つかりません。");
-          }
-          const [quoteText, budgetText] = await Promise.all([quoteRes.text(), budgetRes.text()]);
-          applyImportedCsvTexts(quoteText, budgetText);
-          quotePath.textContent = "demo_quote.csv";
-          budgetPath.textContent = "demo_budget.csv";
-          importStatus.textContent = `デモCSV読み込み完了: 見積 ${state.quoteRows.length}件 / 予算 ${state.budgetRows.length}件`;
+          state.quoteRows = [...sampleQuoteData];
+          state.budgetRows = [...sampleBudgetData];
+          state.mergedRows = mergeRows(state.quoteRows, state.budgetRows);
+          viewState.appliedBudgetLine = null;
+          quotePath.textContent = "内蔵デモデータ";
+          budgetPath.textContent = "内蔵デモデータ";
+          refreshCategoryFilter();
+          refreshModelFilter();
+          render();
+          importStatus.textContent = `内蔵デモデータ読み込み完了: 見積 ${state.quoteRows.length}件 / 予算 ${state.budgetRows.length}件`;
         } catch (e) {
-          importStatus.textContent = `デモCSV読み込み失敗: ${e.message || e}`;
+          importStatus.textContent = `内蔵デモデータ読み込み失敗: ${e.message || e}`;
         }
       }
 
@@ -700,6 +792,17 @@ function render() {
       document.getElementById("clear-btn").addEventListener("click", clearData);
       document.getElementById("load-demo-files").addEventListener("click", loadDemoCsvFiles);
       document.getElementById("load-sample").addEventListener("click", loadSample);
+      helpBtn.addEventListener("click", () => helpDialog.showModal());
+      helpCloseBtn.addEventListener("click", () => helpDialog.close());
+      helpDialog.addEventListener("click", (event) => {
+        const rect = helpDialog.getBoundingClientRect();
+        const outside =
+          event.clientX < rect.left ||
+          event.clientX > rect.right ||
+          event.clientY < rect.top ||
+          event.clientY > rect.bottom;
+        if (outside) helpDialog.close();
+      });
       categoryFilter.addEventListener("change", () => {
         viewState.appliedBudgetLine = null;
         refreshModelFilter();
@@ -712,6 +815,7 @@ function render() {
       periodFilter.addEventListener("change", render);
       linkBudgetBtn.addEventListener("click", applyBudgetLinkSelection);
 
+      renderManualScenes();
       loadSample();
     </script>
   </body>
