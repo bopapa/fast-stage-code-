@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>機材価格トラッカー（機能モック）</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f7fb;
+        --panel: #fff;
+        --text: #142033;
+        --muted: #5d6b82;
+        --line: #d8deea;
+        --primary: #1859ff;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: "Inter", "Noto Sans JP", sans-serif; color: var(--text); background: var(--bg); }
+      .topbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 32px; }
+      .badge { margin: 0; color: var(--primary); font-size: .76rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+      h1 { margin: 6px 0 4px; font-size: 1.8rem; }
+      .subtitle { margin: 0; color: var(--muted); }
+      .primary { border: 0; border-radius: 10px; background: var(--primary); color: #fff; padding: 10px 16px; font-weight: 600; cursor: pointer; }
+      .layout { display: grid; grid-template-columns: 320px 1fr; gap: 18px; padding: 0 32px 32px; }
+      .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; box-shadow: 0 1px 3px rgba(16,24,40,.06); }
+      .filters { grid-row: span 2; }
+      .filters h2 { margin: 0 0 10px; font-size: 1.02rem; }
+      .helper { margin: 0 0 10px; color: var(--muted); font-size: .86rem; }
+      .notice, .rule-note { margin: 10px 0 14px; border-radius: 8px; padding: 10px; font-size: .84rem; }
+      .notice { background: #f6f8fd; border: 1px solid var(--line); color: #3b4a64; }
+      .rule-note { border: 1px dashed #c8d5f0; background: #f5f8ff; color: #3b4a64; line-height: 1.4; }
+      label { display: block; margin-bottom: 10px; color: var(--muted); font-size: .88rem; }
+      input, select { width: 100%; margin-top: 4px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; font-size: .95rem; }
+      .quick-tags { display: grid; gap: 8px; margin-top: 8px; }
+      .quick-tags button { border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #f8faff; cursor: pointer; }
+      .chart-header { display: flex; justify-content: space-between; gap: 12px; }
+      .kpis { display: flex; gap: 12px; }
+      .kpis p { margin: 0; background: #f8faff; padding: 8px 10px; border-radius: 8px; font-weight: 600; }
+      .kpis span { display:block; font-size:.76rem; color:var(--muted); font-weight:500; }
+      .legend { margin-top: 10px; display: flex; gap: 18px; font-size: .9rem; color: var(--muted); }
+      .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+      .quote { background:#1859ff; } .avg { background:#23a36d; } .budget { background:#cc4458; }
+      .price-chart { width:100%; margin-top:10px; border-radius:12px; background:#fcfdff; }
+      .grid line { stroke:#e4e9f4; stroke-width:1; }
+      .budget-line { stroke:#cc4458; stroke-width:1.6; stroke-dasharray:6 4; }
+      .line { fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+      .line.quote { stroke:#1859ff; } .line.avg { stroke:#12a36f; }
+      .axis-labels text { fill:#66758d; font-size:12px; }
+      .budget-label { fill:#5a6480; font-size:11px; font-weight:600; }
+      .status-bar { margin-top:10px; border-radius:10px; padding:10px 12px; font-weight:600; }
+      .status-bar.good { background:#e9f8f2; color:#177e58; }
+      .status-bar.warn { background:#fff3e1; color:#af6200; }
+      table { width:100%; border-collapse: collapse; margin-top:8px; }
+      th, td { text-align:left; border-bottom:1px solid #e7ebf3; padding:10px 8px; font-size:.9rem; }
+      th { color:var(--muted); font-weight:600; }
+      .pill { display:inline-block; padding:4px 8px; border-radius:999px; font-size:.82rem; font-weight:700; }
+      .great { background:#e6f8ef; color:#0d8a57; }
+      .ok { background:#eaf4ff; color:#215bd8; }
+      .warn { background:#fff3e1; color:#c26d00; }
+      .split-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+      .path-view { font-size:.78rem; color:#6a7891; margin-top:2px; word-break:break-all; }
+      .list-header { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+      .link-action { background:none; border:0; color:#1859ff; font-size:.85rem; cursor:pointer; text-decoration:underline; padding:0; }
+      .top-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+      .secondary { display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--text); padding:10px 14px; font-weight:600; cursor:pointer; }
+      .sharepoint-note { margin-top:12px; border:1px solid #cfe0ff; background:#f5f8ff; color:#35507e; border-radius:10px; padding:10px 12px; font-size:.84rem; line-height:1.5; }
+      dialog { border:0; border-radius:16px; padding:0; width:min(920px, calc(100% - 24px)); box-shadow:0 20px 50px rgba(18,34,66,.28); }
+      dialog::backdrop { background:rgba(20,32,51,.45); }
+      .manual-shell { padding:20px; background:#f6f8fd; }
+      .manual-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px; }
+      .manual-header h2 { margin:0 0 6px; }
+      .manual-header p { margin:0; color:var(--muted); }
+      .manual-close { border:1px solid var(--line); background:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; }
+      .manual-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+      .manual-card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; }
+      .manual-card h3 { margin:0 0 8px; font-size:1rem; }
+      .manual-card p, .manual-card li { color:var(--muted); line-height:1.55; }
+      .manual-card ol, .manual-card ul { margin:8px 0 0; padding-left:18px; }
+      .scene-preview { margin-top:10px; border:1px solid #dde6f6; border-radius:12px; background:#fbfcff; padding:10px; }
+      .scene-preview svg { width:100%; height:auto; display:block; }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="badge">Mockup</p>
+        <h1>機材価格トラッカー</h1>
+        <p class="subtitle">見積取得後の購入判断向け 機能モック</p>
+      </div>
+      <div class="top-actions">
+        <button type="button" class="secondary" id="help-btn">使い方マニュアル</button>
+        <button type="button" class="primary" id="load-sample">サンプルデータに戻す</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="panel filters">
+        <h2>検索・絞り込み</h2>
+        <label>
+          機材区分
+          <select id="category-filter">
+            <option value="すべて" selected>すべて</option>
+          </select>
+        </label>
+        <label>
+          機材名・型番
+          <select id="model-filter"></select>
+        </label>
+        <label>
+          比較期間
+          <select id="period-filter">
+            <option value="all" selected>全期間</option>
+            <option value="1y">過去1年間</option>
+            <option value="6m">過去半年</option>
+          </select>
+        </label>
+
+        <h2>CSV取り込み</h2>
+        <p class="helper">見積CSV・予算CSVは別取り込み。前回指定を保持し、次回は自動読込を試行します。</p>
+
+        <label>
+          見積CSV（商品名 / 商品コード / 単価 / 見積日付）
+          <div class="split-actions">
+            <button type="button" id="choose-quote">見積ファイルを指定</button>
+            <button type="button" id="load-quote-auto">前回指定で再読込</button>
+          </div>
+          <div id="quote-path" class="path-view">未指定</div>
+        </label>
+
+        <label>
+          予算CSV（機材区分 / 商品名 / 単価）
+          <div class="split-actions">
+            <button type="button" id="choose-budget">予算ファイルを指定</button>
+            <button type="button" id="load-budget-auto">前回指定で再読込</button>
+          </div>
+          <div id="budget-path" class="path-view">未指定</div>
+        </label>
+
+        <input id="quote-file" type="file" accept=".csv" style="display:none" />
+        <input id="budget-file" type="file" accept=".csv" style="display:none" />
+
+        <div class="quick-tags">
+          <button type="button" id="import-btn">見積CSV・予算CSVを突合して表示</button>
+          <button type="button" id="clear-btn">取り込み結果をクリア</button>
+          <button type="button" id="load-demo-files">内蔵デモデータを読み込む</button>
+        </div>
+
+        <div class="notice" id="import-status">未取り込み（サンプル表示中）</div>
+        <div class="rule-note">自動判定ルール: 予算比 ≤0%「購入可」 / 0%超〜5%「要確認」 / 5%超「再検討」</div>
+        <div class="sharepoint-note">
+          SharePoint 配布向けに、この画面は <strong>単体HTMLで完結</strong> するようにしてあります。デモ動作は「内蔵デモデータを読み込む」で確認できます。
+        </div>
+      </aside>
+
+      <section class="panel chart-panel">
+        <div class="chart-header">
+          <div>
+            <h2 id="chart-item-name">Sony FX3 ボディ</h2>
+            <p>現在見積: <strong id="chart-quote">¥472,000</strong> / 予算: <span id="chart-budget">¥500,000</span></p>
+          </div>
+          <div class="kpis">
+            <p><span>過去最安</span><span id="kpi-low">-</span></p>
+            <p><span>過去最高</span><span id="kpi-high">-</span></p>
+            <p><span>平均差</span><span id="kpi-avg">-</span></p>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span><i class="dot quote"></i>見積り時単価</span>
+          <span><i class="dot avg"></i>見積り平均単価</span>
+          <span><i class="dot budget"></i>予算ライン</span>
+        </div>
+
+        <svg viewBox="0 0 920 360" class="price-chart" role="img" aria-label="価格推移グラフ">
+          <g class="grid">
+            <line x1="60" y1="40" x2="880" y2="40" />
+            <line x1="60" y1="100" x2="880" y2="100" />
+            <line x1="60" y1="160" x2="880" y2="160" />
+            <line x1="60" y1="220" x2="880" y2="220" />
+            <line x1="60" y1="280" x2="880" y2="280" />
+          </g>
+          <g id="chart-budget-lines"></g>
+          <polyline id="chart-avg-line" class="line avg" points="" />
+          <polyline id="chart-quote-line" class="line quote" points="" />
+          <g id="chart-quote-points"></g>
+          <g id="chart-y-axis" class="axis-labels"></g>
+          <g id="chart-x-axis" class="axis-labels"></g>
+        </svg>
+
+        <div class="status-bar good" id="budget-judgement">判定: 予算内（余裕 +¥28,000）</div>
+      </section>
+
+      <section class="panel list-panel">
+        <div class="list-header">
+          <h2>機材別 見積・予算比較一覧</h2>
+          <button type="button" id="link-budget-btn" class="link-action">🔗 予算単価を適用</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>機材区分</th><th>商品名・型番</th><th>商品コード</th><th>見積単価</th><th>見積日付</th><th>予算単価</th><th>差額</th><th>コスト乖離率</th><th>判定</th>
+            </tr>
+          </thead>
+          <tbody id="compare-body"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <dialog id="help-dialog">
+      <div class="manual-shell">
+        <div class="manual-header">
+          <div>
+            <h2>初心者向け かんたんマニュアル</h2>
+            <p>SharePoint 配布を意識して、このファイル1つで操作説明も確認できるようにまとめています。</p>
+          </div>
+          <button type="button" class="manual-close" id="help-close-btn">閉じる</button>
+        </div>
+        <div class="manual-grid">
+          <section class="manual-card">
+            <h3>STEP 1: CSVを指定する</h3>
+            <p>左側の「見積ファイルを指定」「予算ファイルを指定」を押してCSVを選択します。SharePoint 上で見本を試すだけなら、内蔵デモデータだけで確認できます。</p>
+            <div class="scene-preview" id="manual-scene-upload"></div>
+          </section>
+          <section class="manual-card">
+            <h3>STEP 2: 比較結果を見る</h3>
+            <ol>
+              <li>「見積CSV・予算CSVを突合して表示」を押す。</li>
+              <li>右側のグラフで見積推移と予算ラインを見る。</li>
+              <li>下の一覧で差額・判定・乖離率を確認する。</li>
+            </ol>
+            <div class="scene-preview" id="manual-scene-compare"></div>
+          </section>
+          <section class="manual-card">
+            <h3>STEP 3: 予算単価を適用する</h3>
+            <p>機材区分や機材名・型番で絞り込んだあと、「予算単価を適用」を押して候補番号を選びます。</p>
+            <div class="scene-preview" id="manual-scene-apply"></div>
+          </section>
+          <section class="manual-card">
+            <h3>SharePointでの最小運用</h3>
+            <ul>
+              <li>配布対象は <strong>index.html の1ファイル</strong> に集約。</li>
+              <li>デモ確認は内蔵サンプルで完結。</li>
+              <li>実運用は利用者が手元のCSVを選択して読み込む。</li>
+            </ul>
+            <p>※ SharePoint 側の制限でHTML直接表示が抑止される場合は、同じファイルを静的ホストへ置いて SharePoint からリンクするのが最も簡単です。</p>
+          </section>
+        </div>
+      </div>
+    </dialog>
+
+    <script>
+      const sampleQuoteData = [
+        { category: "カメラ", productName: "Sony FX3 ボディ", productCode: "CAM-FX3", unitPrice: 472000, quoteDate: "2026-02-20" },
+        { category: "レンズ", productName: "FE 24-70mm F2.8 GM II", productCode: "LEN-2470GM2", unitPrice: 291000, quoteDate: "2026-02-15" },
+        { category: "音響", productName: "RODE Wireless PRO", productCode: "AUD-RWP", unitPrice: 65200, quoteDate: "2026-02-10" },
+        { category: "カメラ", productName: "Sony FX3 ボディ", productCode: "CAM-FX3", unitPrice: 468000, quoteDate: "2025-12-08" }
+      ];
+      const sampleBudgetData = [
+        { productName: "Sony FX3 ボディ", unitPrice: 500000 },
+        { productName: "FE 24-70mm F2.8 GM II", unitPrice: 280000 },
+        { productName: "RODE Wireless PRO", unitPrice: 70000 }
+      ];
+
+      const STORAGE_KEYS = { quoteName: "quoteFileName", budgetName: "budgetFileName" };
+      const DB_NAME = "equipment-tracker-db";
+      const quoteFileInput = document.getElementById("quote-file");
+      const budgetFileInput = document.getElementById("budget-file");
+      const quotePath = document.getElementById("quote-path");
+      const budgetPath = document.getElementById("budget-path");
+      const importStatus = document.getElementById("import-status");
+      const categoryFilter = document.getElementById("category-filter");
+      const modelFilter = document.getElementById("model-filter");
+      const periodFilter = document.getElementById("period-filter");
+      const compareBody = document.getElementById("compare-body");
+      const chartItemName = document.getElementById("chart-item-name");
+      const chartQuote = document.getElementById("chart-quote");
+      const chartBudget = document.getElementById("chart-budget");
+      const judgement = document.getElementById("budget-judgement");
+      const kpiLow = document.getElementById("kpi-low");
+      const kpiHigh = document.getElementById("kpi-high");
+      const kpiAvg = document.getElementById("kpi-avg");
+      const chartQuoteLine = document.getElementById("chart-quote-line");
+      const chartQuotePoints = document.getElementById("chart-quote-points");
+      const chartAvgLine = document.getElementById("chart-avg-line");
+      const chartBudgetLines = document.getElementById("chart-budget-lines");
+      const chartXAxis = document.getElementById("chart-x-axis");
+      const chartYAxis = document.getElementById("chart-y-axis");
+      const linkBudgetBtn = document.getElementById("link-budget-btn");
+      const helpBtn = document.getElementById("help-btn");
+      const helpDialog = document.getElementById("help-dialog");
+      const helpCloseBtn = document.getElementById("help-close-btn");
+
+      let state = { quoteRows: [...sampleQuoteData], budgetRows: [...sampleBudgetData], mergedRows: [] };
+      let viewState = { rowKeys: [], budgetLines: [], appliedBudgetLine: null };
+
+      function createManualScene(title, accent) {
+        return `
+          <svg viewBox="0 0 480 250" aria-hidden="true">
+            <rect x="0" y="0" width="480" height="250" rx="16" fill="#f7faff"></rect>
+            <rect x="18" y="20" width="444" height="42" rx="10" fill="#ffffff" stroke="#dce6f6"></rect>
+            <circle cx="38" cy="41" r="7" fill="${accent}"></circle>
+            <rect x="56" y="32" width="150" height="14" rx="7" fill="#dfe9ff"></rect>
+            <rect x="18" y="78" width="136" height="150" rx="12" fill="#ffffff" stroke="#dce6f6"></rect>
+            <rect x="174" y="78" width="288" height="150" rx="12" fill="#ffffff" stroke="#dce6f6"></rect>
+            <rect x="32" y="96" width="108" height="24" rx="6" fill="#eef4ff"></rect>
+            <rect x="32" y="132" width="108" height="24" rx="6" fill="#eef4ff"></rect>
+            <rect x="32" y="168" width="108" height="24" rx="6" fill="#eef4ff"></rect>
+            <polyline points="198,188 238,156 282,168 326,122 370,136 418,104" fill="none" stroke="${accent}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+            <line x1="196" y1="198" x2="426" y2="198" stroke="#dce6f6" stroke-width="2"></line>
+            <rect x="256" y="88" width="180" height="28" rx="8" fill="#f6f8ff" stroke="${accent}"></rect>
+            <text x="268" y="107" fill="#38527f" font-size="13" font-family="sans-serif">${title}</text>
+          </svg>
+        `;
+      }
+
+      function renderManualScenes() {
+        document.getElementById("manual-scene-upload").innerHTML = createManualScene("CSVを選択する画面", "#4f83ff");
+        document.getElementById("manual-scene-compare").innerHTML = createManualScene("比較結果の確認画面", "#22a36d");
+        document.getElementById("manual-scene-apply").innerHTML = createManualScene("予算単価の適用画面", "#e8794a");
+      }
+
+      function openDb() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(DB_NAME, 1);
+          req.onupgradeneeded = () => req.result.createObjectStore("handles");
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+      async function setHandle(key, handle) {
+        const db = await openDb();
+        await new Promise((res, rej) => { const tx = db.transaction("handles", "readwrite"); tx.objectStore("handles").put(handle, key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+      }
+      async function getHandle(key) {
+        const db = await openDb();
+        return await new Promise((res, rej) => { const tx = db.transaction("handles", "readonly"); const req = tx.objectStore("handles").get(key); req.onsuccess = () => res(req.result || null); req.onerror = () => rej(req.error); });
+      }
+
+      function parseCsv(text) {
+        const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        if (lines.length < 2) return [];
+        const headers = lines[0].split(",").map((h) => h.trim());
+        return lines.slice(1).map((line) => {
+          const values = line.split(",").map((v) => v.trim());
+          const row = {};
+          headers.forEach((h, i) => (row[h] = values[i] || ""));
+          return row;
+        });
+      }
+      const toNumber = (v) => { const n = Number(String(v || "").replace(/[¥,\s]/g, "")); return Number.isFinite(n) ? n : NaN; };
+      const formatYen = (v) => (v === null || v === undefined || Number.isNaN(v) ? "-" : `¥${v.toLocaleString("ja-JP")}`);
+      const formatPct = (v) => (v === null || v === undefined || Number.isNaN(v) ? "-" : `${v > 0 ? "+" : ""}${v.toFixed(1)}%`);
+      const normalizeDate = (d) => new Date(d + "T00:00:00");
+      const normalizeText = (v) => String(v || "").normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
+
+      function evaluateRule(rate) {
+        if (rate === null) return { className: "warn", label: "予算未登録", tone: "warn" };
+        if (rate <= 0) return { className: "great", label: "購入可", tone: "good" };
+        if (rate <= 5) return { className: "ok", label: "要確認", tone: "warn" };
+        return { className: "warn", label: "再検討", tone: "warn" };
+      }
+
+      function mapQuoteRows(rows) {
+        return rows.map((r) => ({
+          category: String(r["機材区分"] || r.category || "その他").trim(),
+          productName: String(r["商品名"] || r["機材名・型番"] || r.productName || "").trim(),
+          productCode: r["商品コード"] || r.productCode || "",
+          unitPrice: toNumber(r["単価"] || r["見積単価"] || r.unitPrice),
+          quoteDate: r["見積日付"] || r["見積の日付"] || r.quoteDate || ""
+        })).filter((r) => r.productName && Number.isFinite(r.unitPrice) && r.quoteDate);
+      }
+      function mapBudgetRows(rows) {
+        return rows.map((r) => ({
+          category: String(r["機材区分"] || r.category || "").trim(),
+          productName: String(r["商品名"] || r["機材名・型番"] || r.productName || "").trim(),
+          unitPrice: toNumber(r["単価"] || r["予算単価"] || r.unitPrice)
+        })).filter((r) => r.productName && Number.isFinite(r.unitPrice));
+      }
+
+      function mergeRows(quoteRows, budgetRows) {
+        const byCategoryAndName = new Map(
+          budgetRows
+            .filter((r) => r.category)
+            .map((r) => [`${normalizeText(r.category)}||${normalizeText(r.productName)}`, r.unitPrice])
+        );
+        const byNameOnly = new Map(
+          budgetRows.map((r) => [normalizeText(r.productName), r.unitPrice])
+        );
+
+        return quoteRows.map((q) => {
+          const key = `${normalizeText(q.category)}||${normalizeText(q.productName)}`;
+          const budget = byCategoryAndName.has(key)
+            ? byCategoryAndName.get(key)
+            : (byNameOnly.has(normalizeText(q.productName))
+                ? byNameOnly.get(normalizeText(q.productName))
+                : null);
+          const diff = budget === null ? null : q.unitPrice - budget;
+          const rate = budget && budget !== 0 ? (diff / budget) * 100 : null;
+          return { ...q, budget, diff, costVarianceRate: rate, judgement: evaluateRule(rate) };
+        });
+      }
+
+      function filterByPeriod(rows) {
+        const mode = periodFilter.value;
+        if (mode === "all") return rows;
+        const latest = rows.reduce((acc, r) => normalizeDate(r.quoteDate) > acc ? normalizeDate(r.quoteDate) : acc, normalizeDate(rows[0].quoteDate));
+        const start = new Date(latest);
+        if (mode === "1y") start.setFullYear(start.getFullYear() - 1);
+        if (mode === "6m") start.setMonth(start.getMonth() - 6);
+        return rows.filter((r) => normalizeDate(r.quoteDate) >= start);
+      }
+
+
+      function refreshCategoryFilter() {
+        const categories = [...new Set(state.mergedRows.map((r) => r.category).filter(Boolean))]
+          .sort((a, b) => a.localeCompare(b, "ja"));
+        const prev = categoryFilter.value || "すべて";
+        categoryFilter.innerHTML = `<option value="すべて">すべて</option>` +
+          categories.map((c) => `<option value="${c}">${c}</option>`).join("");
+        categoryFilter.value = categories.includes(prev) || prev === "すべて" ? prev : "すべて";
+      }
+
+      function refreshModelFilter() {
+        const category = categoryFilter.value;
+        const source = state.mergedRows;
+        const modelSet = new Set(source.filter((r) => category === "すべて" || r.category === category).map((r) => r.productName));
+        const prev = modelFilter.value;
+        modelFilter.innerHTML = `<option value="すべて">すべて</option>` + [...modelSet].sort((a,b)=>a.localeCompare(b,"ja")).map((n)=>`<option value="${n}">${n}</option>`).join("");
+        modelFilter.value = modelSet.has(prev) || prev === "すべて" ? prev : "すべて";
+      }
+
+      
+      function formatMonthLabel(dateText) {
+        const d = normalizeDate(dateText);
+        return `${d.getMonth() + 1}月`;
+      }
+
+      function buildChartSeries(rows, selectedModel) {
+        if (!rows.length) return [];
+        if (selectedModel && selectedModel !== "すべて") {
+          const target = rows.filter((r) => r.productName === selectedModel);
+          if (target.length) return target;
+        }
+        const primaryName = rows[0].productName;
+        return rows.filter((r) => r.productName === primaryName);
+      }
+
+      function renderChart(seriesRows, budgetLines = []) {
+        if (!seriesRows.length) {
+          chartQuoteLine.setAttribute("points", "");
+          chartQuotePoints.innerHTML = "";
+          chartAvgLine.setAttribute("points", "");
+          chartYAxis.innerHTML = "";
+          chartXAxis.innerHTML = "";
+          chartBudgetLines.innerHTML = "";
+          return;
+        }
+
+        const sorted = [...seriesRows].sort((a, b) => normalizeDate(a.quoteDate) - normalizeDate(b.quoteDate));
+        const quotePrices = sorted.map((r) => r.unitPrice);
+        const avgPrice = quotePrices.reduce((a, b) => a + b, 0) / quotePrices.length;
+        const avgSeries = quotePrices.map(() => avgPrice);
+
+        const activeBudgetLines = budgetLines.length
+          ? budgetLines.filter((b) => Number.isFinite(b.value))
+          : [{ label: sorted[sorted.length - 1].productName, value: sorted[sorted.length - 1].budget }].filter((b) => Number.isFinite(b.value));
+
+        const allValues = [...quotePrices, ...avgSeries, ...activeBudgetLines.map((b) => b.value)];
+        let minV = Math.min(...allValues);
+        let maxV = Math.max(...allValues);
+        if (minV === maxV) {
+          minV -= 1000;
+          maxV += 1000;
+        }
+        const margin = (maxV - minV) * 0.15;
+        const yMin = minV - margin;
+        const yMax = maxV + margin;
+
+        const xStart = 60;
+        const xEnd = 880;
+        const yTop = 40;
+        const yBottom = 280;
+
+        const xFor = (idx, len) => {
+          if (len === 1) return (xStart + xEnd) / 2;
+          return xStart + ((xEnd - xStart) * idx) / (len - 1);
+        };
+        const yFor = (value) => yBottom - ((value - yMin) / (yMax - yMin)) * (yBottom - yTop);
+
+        const quotePoints = sorted.map((r, idx) => `${xFor(idx, sorted.length)},${yFor(r.unitPrice)}`).join(" ");
+        const avgPoints = avgSeries.map((v, idx) => `${xFor(idx, sorted.length)},${yFor(v)}`).join(" ");
+        chartQuoteLine.setAttribute("points", quotePoints);
+        chartQuotePoints.innerHTML = sorted.map((r, idx) => {
+          const x = xFor(idx, sorted.length);
+          const y = yFor(r.unitPrice);
+          return `<circle cx="${x}" cy="${y}" r="4.2" fill="#1859ff" stroke="#ffffff" stroke-width="1.2" />`;
+        }).join("");
+        chartAvgLine.setAttribute("points", avgPoints);
+
+        const palette = ["#cc4458", "#8b5cf6", "#f59e0b", "#0ea5e9", "#ef4444", "#22c55e"];
+        chartBudgetLines.innerHTML = activeBudgetLines.map((line, idx) => {
+          const y = yFor(line.value);
+          const color = palette[idx % palette.length];
+          return `<line class="budget-line" x1="60" y1="${y}" x2="880" y2="${y}" style="stroke:${color}" />
+` +
+            `<text class="budget-label" x="665" y="${y - 4}" style="fill:${color}">${line.label}: ${formatYen(line.value)}</text>`;
+        }).join("");
+
+        const ticks = 5;
+        chartYAxis.innerHTML = Array.from({ length: ticks }, (_, i) => {
+          const ratio = i / (ticks - 1);
+          const value = yMax - (yMax - yMin) * ratio;
+          const y = yTop + (yBottom - yTop) * ratio + 5;
+          return `<text x="10" y="${y}">${formatYen(Math.round(value))}</text>`;
+        }).join("");
+
+        const xTicks = sorted.map((r, idx) => {
+          const x = xFor(idx, sorted.length);
+          return `<text x="${x - 12}" y="320">${formatMonthLabel(r.quoteDate)}</text>`;
+        }).join("");
+        chartXAxis.innerHTML = xTicks;
+      }
+
+      function buildRowKey(r) {
+        return [r.category, r.productName, r.productCode || "", r.quoteDate, r.unitPrice].join("||");
+      }
+
+      function applyBudgetLinkSelection() {
+        const category = categoryFilter.value;
+        const model = modelFilter.value || "すべて";
+        const rows = getFilteredRows(category, model);
+        viewState.rowKeys = rows.map((r) => buildRowKey(r));
+        const selectableBudgetLines = deriveBudgetLines(rows, category, model, null);
+
+        if (!viewState.rowKeys.length) {
+          importStatus.textContent = "表示中の見積データがありません。";
+          return;
+        }
+        if (!selectableBudgetLines.length) {
+          importStatus.textContent = "適用可能な予算ラインがありません。";
+          return;
+        }
+
+        let selected = selectableBudgetLines[0];
+        if (selectableBudgetLines.length > 1) {
+          const menu = selectableBudgetLines
+            .map((b, i) => `${i + 1}: ${b.label} (${formatYen(b.value)})`)
+            .join("\n");
+          const answer = window.prompt(`適用する予算単価を選択してください（番号）\n${menu}`, "1");
+          if (!answer) return;
+          const idx = Number(answer) - 1;
+          if (!Number.isInteger(idx) || idx < 0 || idx >= selectableBudgetLines.length) {
+            importStatus.textContent = "予算選択番号が不正です。";
+            return;
+          }
+          selected = selectableBudgetLines[idx];
+        }
+
+        const keySet = new Set(viewState.rowKeys);
+        state.mergedRows = state.mergedRows.map((r) => {
+          const key = buildRowKey(r);
+          if (!keySet.has(key)) return r;
+          const budget = selected.value;
+          const diff = r.unitPrice - budget;
+          const rate = budget !== 0 ? (diff / budget) * 100 : null;
+          return { ...r, budget, diff, costVarianceRate: rate, judgement: evaluateRule(rate) };
+        });
+
+        viewState.appliedBudgetLine = { label: selected.label, value: selected.value };
+        importStatus.textContent = `予算単価を適用しました: ${selected.label} (${formatYen(selected.value)})`;
+        render();
+      }
+
+      function getFilteredRows(category, model) {
+        let rows = filterByPeriod([...state.mergedRows]);
+        rows = rows.filter((r) => category === "すべて" || r.category === category);
+        if (model !== "すべて") {
+          rows = rows.filter((r) => r.productName === model);
+        }
+        rows.sort((a, b) => normalizeDate(b.quoteDate) - normalizeDate(a.quoteDate));
+        return rows;
+      }
+
+      function deriveBudgetLines(rows, category, model, appliedBudgetLine = null) {
+        const chartRows = buildChartSeries(rows, model);
+        const chartRowsSorted = [...chartRows].sort((a, b) => normalizeDate(a.quoteDate) - normalizeDate(b.quoteDate));
+        const latest = chartRowsSorted[chartRowsSorted.length - 1] || rows[0];
+        if (!latest) return [];
+
+        const shouldShowCategoryBudgets =
+          (category === "すべて" && model !== "すべて") ||
+          (category !== "すべて" && model === "すべて");
+        const targetBudgetCategory = category === "すべて" ? latest.category : category;
+        let budgetLines = shouldShowCategoryBudgets
+          ? [...new Map(
+              state.budgetRows
+                .filter((b) => b.category === targetBudgetCategory && Number.isFinite(b.unitPrice))
+                .map((b) => [b.productName, b.unitPrice])
+            ).entries()]
+              .sort((a, b) => a[0].localeCompare(b[0], "ja"))
+              .map(([label, value]) => ({ label, value }))
+          : (Number.isFinite(latest.budget)
+              ? [{ label: latest.productName, value: latest.budget }]
+              : []);
+
+        if (appliedBudgetLine) {
+          budgetLines = [appliedBudgetLine];
+        }
+        return budgetLines;
+      }
+
+function render() {
+        const category = categoryFilter.value;
+        const model = modelFilter.value || "すべて";
+        const rows = getFilteredRows(category, model);
+
+        viewState.rowKeys = rows.map((r) => buildRowKey(r));
+
+        compareBody.innerHTML = rows.map((r) => `<tr>
+          <td>${r.category}</td><td>${r.productName}</td><td>${r.productCode || "-"}</td><td>${formatYen(r.unitPrice)}</td><td>${r.quoteDate}</td><td>${formatYen(r.budget)}</td><td>${r.diff === null ? "-" : formatYen(r.diff)}</td><td>${formatPct(r.costVarianceRate)}</td><td><span class="pill ${r.judgement.className}">${r.judgement.label}</span></td>
+        </tr>`).join("");
+
+        const top = rows[0];
+        if (!top) {
+          chartItemName.textContent = "対象データなし";
+          chartQuote.textContent = "-";
+          chartBudget.textContent = "-";
+          judgement.textContent = "判定: 条件に一致するデータがありません。";
+          judgement.className = "status-bar warn";
+          kpiLow.textContent = "-"; kpiHigh.textContent = "-"; kpiAvg.textContent = "-";
+          viewState.budgetLines = [];
+          viewState.appliedBudgetLine = null;
+          renderChart([], []);
+          return;
+        }
+
+        const chartRows = buildChartSeries(rows, model);
+        const chartRowsSorted = [...chartRows].sort((a, b) => normalizeDate(a.quoteDate) - normalizeDate(b.quoteDate));
+        const latest = chartRowsSorted[chartRowsSorted.length - 1] || top;
+        const budgetLines = deriveBudgetLines(rows, category, model, viewState.appliedBudgetLine);
+        const targetBudgetCategory = category === "すべて" ? latest.category : category;
+
+        viewState.budgetLines = budgetLines;
+        const prices = chartRowsSorted.map((r) => r.unitPrice);
+        const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+        chartItemName.textContent = latest.productName;
+        chartQuote.textContent = formatYen(latest.unitPrice);
+        chartBudget.textContent = budgetLines.length > 1
+          ? `${targetBudgetCategory}区分: ${budgetLines.length}件の予算ライン`
+          : (budgetLines.length === 1 ? formatYen(budgetLines[0].value) : formatYen(latest.budget));
+        kpiLow.textContent = formatYen(Math.min(...prices));
+        kpiHigh.textContent = formatYen(Math.max(...prices));
+        kpiAvg.textContent = `${latest.unitPrice - avg >= 0 ? "+" : ""}${formatYen(latest.unitPrice - avg)}`;
+        judgement.textContent = `判定: ${latest.judgement.label}（差額 ${formatYen(latest.diff)} / コスト乖離率 ${formatPct(latest.costVarianceRate)}）`;
+        judgement.className = `status-bar ${latest.judgement.tone}`;
+        renderChart(chartRows, budgetLines);
+      }
+
+      async function readTextFromHandle(handle) {
+        const file = await handle.getFile();
+        return file.text();
+      }
+
+      async function chooseFile(kind) {
+        const pickerSupported = "showOpenFilePicker" in window;
+        if (pickerSupported) {
+          const [handle] = await window.showOpenFilePicker({ multiple: false, types: [{ description: "CSV", accept: { "text/csv": [".csv"], "text/plain": [".csv"] } }] });
+          await setHandle(kind, handle);
+          localStorage.setItem(kind === "quote" ? STORAGE_KEYS.quoteName : STORAGE_KEYS.budgetName, handle.name);
+          if (kind === "quote") quotePath.textContent = handle.name;
+          else budgetPath.textContent = handle.name;
+          return readTextFromHandle(handle);
+        }
+        return new Promise((resolve, reject) => {
+          const input = kind === "quote" ? quoteFileInput : budgetFileInput;
+          input.onchange = () => {
+            const file = input.files?.[0];
+            if (!file) return reject(new Error("ファイル未選択"));
+            const reader = new FileReader();
+            reader.onload = () => {
+              localStorage.setItem(kind === "quote" ? STORAGE_KEYS.quoteName : STORAGE_KEYS.budgetName, file.name);
+              if (kind === "quote") quotePath.textContent = file.name; else budgetPath.textContent = file.name;
+              resolve(String(reader.result || ""));
+            };
+            reader.onerror = () => reject(new Error("ファイル読み込み失敗"));
+            reader.readAsText(file, "utf-8");
+          };
+          input.click();
+        });
+      }
+
+      async function loadRemembered(kind) {
+        try {
+          const handle = await getHandle(kind);
+          if (!handle) return null;
+          const perm = await handle.queryPermission({ mode: "read" });
+          if (perm !== "granted") {
+            const req = await handle.requestPermission({ mode: "read" });
+            if (req !== "granted") return null;
+          }
+          if (kind === "quote") quotePath.textContent = handle.name;
+          else budgetPath.textContent = handle.name;
+          return await readTextFromHandle(handle);
+        } catch {
+          return null;
+        }
+      }
+
+      function applyImportedCsvTexts(quoteText, budgetText) {
+        state.quoteRows = mapQuoteRows(parseCsv(quoteText));
+        state.budgetRows = mapBudgetRows(parseCsv(budgetText));
+        state.mergedRows = mergeRows(state.quoteRows, state.budgetRows);
+        viewState.appliedBudgetLine = null;
+        if (state.mergedRows.length === 0) {
+          throw new Error("有効な見積データを読み込めませんでした。ヘッダ名/日付を確認してください。");
+        }
+        refreshCategoryFilter();
+        refreshModelFilter();
+        render();
+      }
+
+      async function loadDemoCsvFiles() {
+        try {
+          state.quoteRows = [...sampleQuoteData];
+          state.budgetRows = [...sampleBudgetData];
+          state.mergedRows = mergeRows(state.quoteRows, state.budgetRows);
+          viewState.appliedBudgetLine = null;
+          quotePath.textContent = "内蔵デモデータ";
+          budgetPath.textContent = "内蔵デモデータ";
+          refreshCategoryFilter();
+          refreshModelFilter();
+          render();
+          importStatus.textContent = `内蔵デモデータ読み込み完了: 見積 ${state.quoteRows.length}件 / 予算 ${state.budgetRows.length}件`;
+        } catch (e) {
+          importStatus.textContent = `内蔵デモデータ読み込み失敗: ${e.message || e}`;
+        }
+      }
+
+      async function importCsvs() {
+        try {
+          let quoteText = await loadRemembered("quote");
+          if (!quoteText) quoteText = await chooseFile("quote");
+          let budgetText = await loadRemembered("budget");
+          if (!budgetText) budgetText = await chooseFile("budget");
+
+          applyImportedCsvTexts(quoteText, budgetText);
+          importStatus.textContent = `読み込み完了: 見積 ${state.quoteRows.length}件 / 予算 ${state.budgetRows.length}件`;
+        } catch (e) {
+          importStatus.textContent = `読み込み失敗: ${e.message || e}`;
+        }
+      }
+
+      function loadSample() {
+        state.quoteRows = [...sampleQuoteData];
+        state.budgetRows = [...sampleBudgetData];
+        state.mergedRows = mergeRows(state.quoteRows, state.budgetRows);
+        viewState.appliedBudgetLine = null;
+        quotePath.textContent = localStorage.getItem(STORAGE_KEYS.quoteName) || "未指定";
+        budgetPath.textContent = localStorage.getItem(STORAGE_KEYS.budgetName) || "未指定";
+        refreshCategoryFilter();
+        refreshModelFilter();
+        render();
+        importStatus.textContent = "未取り込み（サンプル表示中）";
+      }
+
+      function clearData() {
+        state.quoteRows = [];
+        state.budgetRows = [];
+        state.mergedRows = [];
+        viewState.appliedBudgetLine = null;
+        refreshCategoryFilter();
+        refreshModelFilter();
+        render();
+        importStatus.textContent = "取り込み結果をクリアしました。";
+      }
+
+      document.getElementById("choose-quote").addEventListener("click", async () => {
+        try { await chooseFile("quote"); importStatus.textContent = "見積CSVを指定しました。"; } catch {}
+      });
+      document.getElementById("choose-budget").addEventListener("click", async () => {
+        try { await chooseFile("budget"); importStatus.textContent = "予算CSVを指定しました。"; } catch {}
+      });
+      document.getElementById("load-quote-auto").addEventListener("click", async () => {
+        const t = await loadRemembered("quote");
+        importStatus.textContent = t ? "前回指定の見積CSVを読み込み可能です。" : "前回指定の見積CSVが見つからないため、再指定してください。";
+      });
+      document.getElementById("load-budget-auto").addEventListener("click", async () => {
+        const t = await loadRemembered("budget");
+        importStatus.textContent = t ? "前回指定の予算CSVを読み込み可能です。" : "前回指定の予算CSVが見つからないため、再指定してください。";
+      });
+      document.getElementById("import-btn").addEventListener("click", importCsvs);
+      document.getElementById("clear-btn").addEventListener("click", clearData);
+      document.getElementById("load-demo-files").addEventListener("click", loadDemoCsvFiles);
+      document.getElementById("load-sample").addEventListener("click", loadSample);
+      helpBtn.addEventListener("click", () => helpDialog.showModal());
+      helpCloseBtn.addEventListener("click", () => helpDialog.close());
+      helpDialog.addEventListener("click", (event) => {
+        const rect = helpDialog.getBoundingClientRect();
+        const outside =
+          event.clientX < rect.left ||
+          event.clientX > rect.right ||
+          event.clientY < rect.top ||
+          event.clientY > rect.bottom;
+        if (outside) helpDialog.close();
+      });
+      categoryFilter.addEventListener("change", () => {
+        viewState.appliedBudgetLine = null;
+        refreshModelFilter();
+        render();
+      });
+      modelFilter.addEventListener("change", () => {
+        viewState.appliedBudgetLine = null;
+        render();
+      });
+      periodFilter.addEventListener("change", render);
+      linkBudgetBtn.addEventListener("click", applyBudgetLinkSelection);
+
+      renderManualScenes();
+      loadSample();
+    </script>
+  </body>
+</html>
