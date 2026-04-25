@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>トラッカー用CSVデータ書き込みツール</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Yu Gothic UI", "Meiryo", sans-serif;
+        --bg: #f3f6fb;
+        --surface: #ffffff;
+        --surface-muted: #f8fbff;
+        --text: #17212f;
+        --text-sub: #4b5f7f;
+        --border: #d6dfec;
+        --shadow: 0 12px 30px rgba(15, 34, 63, 0.12);
+        --primary: #2f67d8;
+        --primary-strong: #2351b2;
+        --secondary: #6b7f9f;
+        --secondary-strong: #4e607c;
+        --success: #0f7b32;
+        --danger: #bf1a1a;
+      }
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, #f7f9fd 0%, var(--bg) 100%);
+        color: var(--text);
+      }
+      .container {
+        max-width: 1040px;
+        margin: 24px auto;
+        background: var(--surface);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        border: 1px solid #e4ebf6;
+        padding: 24px;
+      }
+      h1 {
+        margin-top: 0;
+        margin-bottom: 6px;
+        font-size: 1.6rem;
+        color: #183055;
+      }
+      .hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .hero-text {
+        flex: 1 1 520px;
+      }
+      .hero-action {
+        flex: 0 0 auto;
+      }
+      h2 {
+        margin: 0 0 10px;
+        font-size: 1.1rem;
+        color: #1f3a63;
+      }
+      .field,
+      .section {
+        margin-bottom: 18px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+      }
+      .field {
+        background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%);
+      }
+      .label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 700;
+      }
+      .inline {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      button {
+        border: none;
+        border-radius: 8px;
+        padding: 9px 14px;
+        cursor: pointer;
+        font-size: 0.92rem;
+        font-weight: 600;
+        transition: transform 0.04s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .btn-primary {
+        background: var(--primary);
+        color: #fff;
+        box-shadow: 0 3px 12px rgba(47, 103, 216, 0.28);
+      }
+      .btn-primary:hover {
+        background: var(--primary-strong);
+      }
+      .btn-secondary {
+        background: #eaf0fa;
+        color: #27416a;
+        border: 1px solid #c9d7ec;
+      }
+      .btn-secondary:hover {
+        background: #dfe9f8;
+      }
+      textarea {
+        width: 100%;
+        min-height: 180px;
+        border-radius: 8px;
+        border: 1px solid #c7d2e3;
+        padding: 10px;
+        resize: vertical;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        line-height: 1.5;
+      }
+      .dropzone {
+        border: 2px dashed #7f98c9;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        background: var(--surface-muted);
+      }
+      .dropzone.dragover {
+        background: #e8f0ff;
+        border-color: var(--primary);
+      }
+      .message {
+        margin-top: 8px;
+        font-size: 0.95rem;
+      }
+      .message.success {
+        color: var(--success);
+      }
+      .message.error {
+        color: var(--danger);
+      }
+      .log {
+        background: #111d33;
+        color: #dbeafe;
+        padding: 10px;
+        border-radius: 8px;
+        min-height: 120px;
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      .review {
+        border: 1px solid #c7d2e3;
+        border-radius: 8px;
+        padding: 12px;
+        background: #fff;
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      .accordion-toggle {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #eef4ff;
+        color: #213f69;
+        border: 1px solid #d6dfec;
+        margin-bottom: 10px;
+      }
+      .accordion-toggle::after {
+        content: "▲";
+        font-size: 0.8rem;
+      }
+      .accordion-toggle.collapsed::after {
+        content: "▼";
+      }
+      .accordion-panel[hidden] {
+        display: none;
+      }
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .section-header h2 {
+        margin-bottom: 0;
+      }
+      .hint {
+        color: var(--text-sub);
+        font-size: 0.9rem;
+      }
+      .editor {
+        margin-top: 12px;
+        border: 1px solid #c7d2e3;
+        border-radius: 8px;
+        padding: 10px;
+        background: #fff;
+      }
+      .editor[hidden] {
+        display: none;
+      }
+      .editor-table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 860px;
+      }
+      th,
+      td {
+        border: 1px solid #d6dfec;
+        padding: 8px;
+        text-align: left;
+        font-size: 0.9rem;
+      }
+      th {
+        background: #eef4ff;
+        color: #213f69;
+        white-space: nowrap;
+      }
+      .category-input {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #b7c7e3;
+        border-radius: 6px;
+        padding: 6px;
+      }
+      .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .filter-select {
+        min-width: 220px;
+        border: 1px solid #b7c7e3;
+        border-radius: 6px;
+        padding: 8px 10px;
+        background: #fff;
+        color: var(--text);
+      }
+      .sheet-wrap {
+        overflow: auto;
+        border: 1px solid #d6dfec;
+        border-radius: 8px;
+        background: #fff;
+      }
+      .sheet-table {
+        width: 100%;
+        min-width: 980px;
+        table-layout: fixed;
+      }
+      .sheet-table td {
+        padding: 0;
+      }
+      .sheet-table td.readonly {
+        padding: 8px;
+        background: #f8fbff;
+      }
+      .cell-input {
+        width: 100%;
+        min-width: 120px;
+        border: none;
+        padding: 10px 8px;
+        box-sizing: border-box;
+        background: #fff;
+        font: inherit;
+      }
+      .cell-input:focus {
+        outline: 2px solid rgba(47, 103, 216, 0.25);
+        outline-offset: -2px;
+        background: #f9fbff;
+      }
+      .sheet-table th.resizable {
+        position: relative;
+      }
+      .column-resizer {
+        position: absolute;
+        top: 0;
+        right: -3px;
+        width: 8px;
+        height: 100%;
+        cursor: col-resize;
+        user-select: none;
+        touch-action: none;
+      }
+      .column-resizer::before {
+        content: "";
+        position: absolute;
+        top: 6px;
+        bottom: 6px;
+        left: 3px;
+        width: 2px;
+        border-radius: 999px;
+        background: #9fb4d8;
+      }
+      .muted-box {
+        padding: 14px;
+        border: 1px dashed #c9d7ec;
+        border-radius: 8px;
+        color: var(--text-sub);
+        background: #fbfdff;
+      }
+      .manual-shell {
+        display: grid;
+        grid-template-columns: minmax(260px, 320px) 1fr;
+        gap: 16px;
+      }
+      .manual-nav {
+        display: grid;
+        gap: 10px;
+      }
+      .manual-tab {
+        text-align: left;
+        border: 1px solid #d7e0ee;
+        background: #f8fbff;
+        color: #1f3a63;
+      }
+      .manual-tab.active {
+        background: linear-gradient(180deg, #2f67d8 0%, #2351b2 100%);
+        color: #fff;
+      }
+      .manual-panel {
+        border: 1px solid #d7e0ee;
+        border-radius: 10px;
+        background: #fff;
+        padding: 16px;
+      }
+      .manual-panel[hidden] {
+        display: none;
+      }
+      .manual-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 18px;
+        align-items: start;
+      }
+      .manual-steps {
+        margin: 0;
+        padding-left: 18px;
+        line-height: 1.8;
+      }
+      .manual-note {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-left: 4px solid #2f67d8;
+        background: #f5f9ff;
+        color: #355178;
+        border-radius: 6px;
+      }
+      .demo-card {
+        border: 1px solid #d6dfec;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 8px 18px rgba(18, 35, 66, 0.08);
+      }
+      .demo-bar {
+        padding: 8px 12px;
+        background: #eef4ff;
+        color: #244268;
+        font-weight: 700;
+        font-size: 0.9rem;
+      }
+      .demo-body {
+        padding: 14px;
+      }
+      .demo-field {
+        height: 18px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #e8eef8 0%, #f5f8fd 100%);
+        margin-bottom: 10px;
+      }
+      .demo-field.primary {
+        width: 78%;
+      }
+      .demo-field.secondary {
+        width: 52%;
+      }
+      .demo-button-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .demo-button {
+        padding: 8px 10px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+      .demo-button.primary {
+        background: #2f67d8;
+        color: #fff;
+      }
+      .demo-button.secondary {
+        background: #eaf0fa;
+        color: #244268;
+      }
+      .drop-demo {
+        min-height: 190px;
+        border: 2px dashed #94add9;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+        position: relative;
+        overflow: hidden;
+      }
+      .drop-demo::before {
+        content: "CSV";
+        position: absolute;
+        top: 24px;
+        left: 28px;
+        width: 62px;
+        height: 78px;
+        display: grid;
+        place-items: center;
+        background: #ffffff;
+        border: 1px solid #cbd8eb;
+        border-radius: 10px;
+        color: #2f67d8;
+        font-weight: 800;
+        box-shadow: 0 8px 14px rgba(34, 63, 105, 0.12);
+        animation: floatFile 2.6s ease-in-out infinite;
+      }
+      .drop-demo::after {
+        content: "ここへドラッグ＆ドロップ";
+        position: absolute;
+        right: 20px;
+        bottom: 22px;
+        color: #30507d;
+        font-weight: 700;
+        font-size: 0.95rem;
+      }
+      .drop-arrow {
+        position: absolute;
+        left: 96px;
+        top: 56px;
+        font-size: 1.8rem;
+        color: #2f67d8;
+        animation: slideArrow 2.6s ease-in-out infinite;
+      }
+      .scene-table {
+        display: grid;
+        gap: 6px;
+      }
+      .scene-row {
+        display: grid;
+        grid-template-columns: 72px 1fr 120px 90px;
+        gap: 6px;
+      }
+      .scene-cell {
+        height: 34px;
+        border-radius: 6px;
+        background: #f8fbff;
+        border: 1px solid #d7e0ee;
+      }
+      .scene-cell.editing {
+        background: #ffffff;
+        box-shadow: inset 0 0 0 2px rgba(47, 103, 216, 0.25);
+        animation: pulseCell 2.4s ease-in-out infinite;
+      }
+      .scene-caption {
+        margin-top: 10px;
+        color: #466182;
+        font-size: 0.9rem;
+      }
+      @keyframes floatFile {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(14px, 10px); }
+      }
+      @keyframes slideArrow {
+        0%, 100% { transform: translateX(0); opacity: 0.45; }
+        50% { transform: translateX(18px); opacity: 1; }
+      }
+      @keyframes pulseCell {
+        0%, 100% { box-shadow: inset 0 0 0 2px rgba(47, 103, 216, 0.2); }
+        50% { box-shadow: inset 0 0 0 2px rgba(47, 103, 216, 0.45); }
+      }
+      @media (max-width: 860px) {
+        .manual-shell,
+        .manual-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="hero">
+        <div class="hero-text">
+          <h1>トラッカー用CSVデータ書き込み・編集ツール</h1>
+          <p class="hint" style="margin-top: 0; margin-bottom: 14px">range機材価格トラッカー用DB-CSV追記・編集ツールです</p>
+        </div>
+        <div class="hero-action">
+          <button id="jumpToEditorBtn" type="button" class="btn-secondary">取り込みCSV編集エリアへ移動</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label">書き込むCSVファイル指定：</label>
+        <div class="inline">
+          <button id="pickTargetBtn" type="button" class="btn-primary">CSVファイルを選択</button>
+          <button id="clearTargetBtn" type="button" class="btn-secondary">ファイル指定クリア</button>
+          <span id="targetFileName">未選択</span>
+        </div>
+        <p class="hint">Chrome/Edge で動作します。選択したCSVに追記し、上書き保存します。</p>
+      </div>
+
+      <section class="section">
+        <div class="section-header">
+          <h2>初心者向けかんたんマニュアル</h2>
+          <button id="toggleManualBtn" type="button" class="accordion-toggle collapsed" style="width: auto; margin-bottom: 0;">マニュアルを表示する</button>
+        </div>
+        <div id="manualPanel" class="accordion-panel" hidden>
+        <p class="hint">はじめて使う方向けに、場面ごとの操作手順を動くイメージ付きでまとめています。</p>
+        <div class="manual-shell">
+          <div class="manual-nav">
+            <button type="button" class="manual-tab active" data-manual-tab="manual-target">1. 最初にやること</button>
+            <button type="button" class="manual-tab" data-manual-tab="manual-text">2. テキストで追加する</button>
+            <button type="button" class="manual-tab" data-manual-tab="manual-file">3. CSVを添付して追加する</button>
+            <button type="button" class="manual-tab" data-manual-tab="manual-edit">4. 取り込みCSVを編集して保存する</button>
+          </div>
+          <div class="manual-panel" data-manual-panel="manual-target">
+            <div class="manual-grid">
+              <div>
+                <ol class="manual-steps">
+                  <li>画面上部の <strong>「CSVファイルを選択」</strong> を押します。</li>
+                  <li>書き込み先にしたいCSVファイルを選びます。</li>
+                  <li>選択が終わると、レビューエリアと取り込みCSV編集エリアに内容が表示されます。</li>
+                </ol>
+                <div class="manual-note">まずは「書き込み先CSV」を選ぶのがスタートです。選ばないと追加・保存はできません。</div>
+              </div>
+              <div class="demo-card">
+                <div class="demo-bar">場面イメージ：最初の選択</div>
+                <div class="demo-body">
+                  <div class="demo-field primary"></div>
+                  <div class="demo-field secondary"></div>
+                  <div class="demo-button-row">
+                    <div class="demo-button primary">CSVファイルを選択</div>
+                    <div class="demo-button secondary">ファイル指定クリア</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="manual-panel" data-manual-panel="manual-text" hidden>
+            <div class="manual-grid">
+              <div>
+                <ol class="manual-steps">
+                  <li>「テキストで書き込み」欄に、1行1レコードでカンマ区切り入力します。</li>
+                  <li>ヘッダー行が含まれていても、自動で除外されます。</li>
+                  <li><strong>「追加」</strong> を押すと、指定中のCSVへ追記保存されます。</li>
+                </ol>
+                <div class="manual-note">例：<code>機材A,商品A,CODE001,1000,2026-03-18</code></div>
+              </div>
+              <div class="demo-card">
+                <div class="demo-bar">場面イメージ：テキスト入力</div>
+                <div class="demo-body">
+                  <div style="height: 98px; border: 1px solid #d6dfec; border-radius: 8px; background: linear-gradient(180deg, #fff 0%, #fafcff 100%); padding: 10px; font-family: monospace; color: #445c7d;">
+                    機材A,商品A,CODE001,1000,2026-03-18<br />
+                    機材B,商品B,CODE002,2500,2026-03-18
+                  </div>
+                  <div class="demo-button-row">
+                    <div class="demo-button primary">追加</div>
+                    <div class="demo-button secondary">テキストクリア</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="manual-panel" data-manual-panel="manual-file" hidden>
+            <div class="manual-grid">
+              <div>
+                <ol class="manual-steps">
+                  <li>CSVファイルをドラッグ＆ドロップ、またはファイル選択で添付します。</li>
+                  <li>添付後、必要なら上側レビューで内容を確認します。</li>
+                  <li><strong>「追加」</strong> を押すと、添付CSVのレコードが書き込み先CSVに追記されます。</li>
+                </ol>
+                <div class="manual-note">ファイル添付のイメージを右に表示しています。1ファイルのみ添付できます。</div>
+              </div>
+              <div class="demo-card">
+                <div class="demo-bar">場面イメージ：CSV添付</div>
+                <div class="demo-body">
+                  <div class="drop-demo">
+                    <div class="drop-arrow">→</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="manual-panel" data-manual-panel="manual-edit" hidden>
+            <div class="manual-grid">
+              <div>
+                <ol class="manual-steps">
+                  <li>画面下部の <strong>「取り込みCSV編集エリア」</strong> で機材区分を絞り込みます。</li>
+                  <li>表のセルをExcelのように直接編集します。コピー＆ペーストも可能です。</li>
+                  <li>編集が終わったら <strong>「上書き保存」</strong> を押します。</li>
+                </ol>
+                <div class="manual-note">編集できるのは現在、機材区分・商品名・商品コード・単価です。保存すると選択中CSVへ上書きされます。</div>
+              </div>
+              <div class="demo-card">
+                <div class="demo-bar">場面イメージ：セル編集</div>
+                <div class="demo-body">
+                  <div class="scene-table">
+                    <div class="scene-row">
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell editing"></div>
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell"></div>
+                    </div>
+                    <div class="scene-row">
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell editing"></div>
+                      <div class="scene-cell"></div>
+                    </div>
+                    <div class="scene-row">
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell"></div>
+                      <div class="scene-cell editing"></div>
+                    </div>
+                  </div>
+                  <div class="scene-caption">青く光るセルが、いま編集しているイメージです。</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>テキストで書き込み</h2>
+        <p class="hint">1行=1レコード。カンマ区切りで入力してください（複数行可）。</p>
+        <textarea id="textInput" placeholder="例: 機材A,商品A,CODE001,1000,2026-02-25"></textarea>
+        <div class="inline" style="margin-top: 10px">
+          <button id="appendTextBtn" type="button" class="btn-primary">追加</button>
+          <button id="clearTextBtn" type="button" class="btn-secondary">テキストクリア</button>
+          <span id="textResult" class="message"></span>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>CSVファイル添付による追加</h2>
+        <div id="dropzone" class="dropzone">
+          ここにCSVファイルをドラッグ＆ドロップ（1ファイルのみ）
+          <div style="margin-top: 10px">
+            <input id="attachInput" type="file" accept=".csv,text/csv" />
+          </div>
+          <div id="attachedFile" class="hint" style="margin-top: 8px">未添付</div>
+        </div>
+
+        <div id="attachedEditor" class="editor" hidden>
+          <div class="hint" style="margin-bottom: 8px">
+            添付CSVレビュー（CSV添付時のみ表示）。「機材区分」列はレコードごとに編集できます。
+          </div>
+          <div class="editor-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>機材区分（編集可）</th>
+                  <th>商品名</th>
+                  <th>商品コード</th>
+                  <th>単価</th>
+                  <th>見積日付</th>
+                </tr>
+              </thead>
+              <tbody id="editorBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="inline" style="margin-top: 10px">
+          <button id="appendFileBtn" type="button" class="btn-primary">追加</button>
+          <button id="clearAttachedBtn" type="button" class="btn-secondary">ファイル指定クリア</button>
+          <span id="fileResult" class="message"></span>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>共通ログ</h2>
+        <div id="commonLog" class="log"></div>
+      </section>
+
+      <section class="section">
+        <h2>レビューエリア</h2>
+        <button id="toggleReviewBtn" type="button" class="accordion-toggle">レビュー表示を折りたたむ</button>
+        <div id="reviewPanel" class="accordion-panel">
+          <div id="review" class="review"></div>
+        </div>
+      </section>
+
+      <section id="importEditorSection" class="section">
+        <h2>取り込みCSV編集エリア</h2>
+        <p class="hint">書き込み対象CSVの読込済みレコードを表示します。機材区分で絞り込み、商品名・商品コード・単価をセル編集後、「上書き保存」でCSVへ保存します。</p>
+        <div class="toolbar">
+          <div class="inline">
+            <label class="label" for="categoryFilter" style="margin-bottom: 0">機材区分で絞り込み：</label>
+            <select id="categoryFilter" class="filter-select">
+              <option value="">すべて表示</option>
+            </select>
+          </div>
+          <div class="inline">
+            <button id="saveGridBtn" type="button" class="btn-primary">上書き保存</button>
+            <span id="gridResult" class="message"></span>
+          </div>
+        </div>
+        <div id="gridEmpty" class="muted-box">書き込み対象CSVファイルを選択すると、ここに編集テーブルが表示されます。</div>
+        <div id="gridWrap" class="sheet-wrap" hidden>
+          <table class="sheet-table">
+            <colgroup>
+              <col style="width: 110px" />
+              <col style="width: 160px" />
+              <col id="productNameCol" style="width: 360px" />
+              <col style="width: 160px" />
+              <col style="width: 130px" />
+              <col style="width: 150px" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>レコード番号</th>
+                <th>機材区分（編集可）</th>
+                <th class="resizable">商品名（編集可）<span id="productNameResizer" class="column-resizer" aria-hidden="true"></span></th>
+                <th>商品コード（編集可）</th>
+                <th>単価（編集可）</th>
+                <th>見積日付</th>
+              </tr>
+            </thead>
+            <tbody id="gridBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      (() => {
+        const EXPECTED_HEADER = ["機材区分", "商品名", "商品コード", "単価", "見積日付"];
+        const COLUMN_COUNT = EXPECTED_HEADER.length;
+
+        let targetHandle = null;
+        let attachedCsvFile = null;
+        let attachedCsvRows = [];
+        let targetDataRows = [];
+        let currentFilterValue = "";
+
+        const targetFileNameEl = document.getElementById("targetFileName");
+        const textResultEl = document.getElementById("textResult");
+        const fileResultEl = document.getElementById("fileResult");
+        const gridResultEl = document.getElementById("gridResult");
+        const commonLogEl = document.getElementById("commonLog");
+        const reviewEl = document.getElementById("review");
+        const reviewPanelEl = document.getElementById("reviewPanel");
+        const toggleReviewBtnEl = document.getElementById("toggleReviewBtn");
+        const attachedFileEl = document.getElementById("attachedFile");
+        const attachedEditorEl = document.getElementById("attachedEditor");
+        const editorBodyEl = document.getElementById("editorBody");
+        const attachInputEl = document.getElementById("attachInput");
+        const textInputEl = document.getElementById("textInput");
+        const categoryFilterEl = document.getElementById("categoryFilter");
+        const gridBodyEl = document.getElementById("gridBody");
+        const gridWrapEl = document.getElementById("gridWrap");
+        const gridEmptyEl = document.getElementById("gridEmpty");
+        const productNameColEl = document.getElementById("productNameCol");
+        const productNameResizerEl = document.getElementById("productNameResizer");
+        const importEditorSectionEl = document.getElementById("importEditorSection");
+        const manualTabEls = document.querySelectorAll("[data-manual-tab]");
+        const manualPanelEls = document.querySelectorAll("[data-manual-panel]");
+        const manualPanelContainerEl = document.getElementById("manualPanel");
+        const toggleManualBtnEl = document.getElementById("toggleManualBtn");
+
+        function normalizeCell(value) {
+          return String(value ?? "")
+            .replace(/^﻿/, "")
+            .trim();
+        }
+
+        function isHeaderRow(row) {
+          if (!row || row.length !== COLUMN_COUNT) return false;
+          return row.every((cell, idx) => normalizeCell(cell) === EXPECTED_HEADER[idx]);
+        }
+
+        function quoteCsvCell(value) {
+          const text = String(value ?? "");
+          if (/[",\n\r]/.test(text)) {
+            return '"' + text.replace(/"/g, '""') + '"';
+          }
+          return text;
+        }
+
+        function rowsToCsv(rows) {
+          return rows.map((row) => row.map(quoteCsvCell).join(",")).join("\n");
+        }
+
+        function parseCsv(text) {
+          const rows = [];
+          let row = [];
+          let cell = "";
+          let i = 0;
+          let inQuotes = false;
+
+          while (i < text.length) {
+            const ch = text[i];
+
+            if (inQuotes) {
+              if (ch === '"') {
+                if (text[i + 1] === '"') {
+                  cell += '"';
+                  i += 2;
+                  continue;
+                }
+                inQuotes = false;
+              } else {
+                cell += ch;
+              }
+            } else {
+              if (ch === '"') {
+                inQuotes = true;
+              } else if (ch === ",") {
+                row.push(cell);
+                cell = "";
+              } else if (ch === "\n") {
+                row.push(cell);
+                rows.push(row);
+                row = [];
+                cell = "";
+              } else if (ch === "\r") {
+              } else {
+                cell += ch;
+              }
+            }
+            i += 1;
+          }
+
+          row.push(cell);
+          const hasAnyData = row.some((c) => c.length > 0) || row.length > 1;
+          if (hasAnyData) {
+            rows.push(row);
+          }
+
+          return rows;
+        }
+
+        function setResult(el, message, isError = false) {
+          el.textContent = message;
+          el.className = `message ${isError ? "error" : "success"}`;
+        }
+
+        function log(message) {
+          const now = new Date().toLocaleString("ja-JP");
+          commonLogEl.textContent += `[${now}] ${message}\n`;
+          commonLogEl.scrollTop = commonLogEl.scrollHeight;
+        }
+
+        function renderReview(targetRows = null) {
+          const lines = [
+            "ヘッダー情報",
+            EXPECTED_HEADER.join(","),
+            "",
+          ];
+
+          if (!targetRows || targetRows.length <= 1) {
+            lines.push("(書き込み対象CSVのレコードはまだありません)");
+            reviewEl.textContent = lines.join("\n");
+            return;
+          }
+
+          const dataRows = targetRows.slice(1);
+          dataRows.forEach((row, idx) => {
+            lines.push(`${idx + 1},${row.join(",")}`);
+          });
+
+          reviewEl.textContent = lines.join("\n");
+        }
+
+        function setReviewCollapsed(collapsed) {
+          reviewPanelEl.hidden = collapsed;
+          toggleReviewBtnEl.classList.toggle("collapsed", collapsed);
+          toggleReviewBtnEl.textContent = collapsed ? "レビュー表示を展開する" : "レビュー表示を折りたたむ";
+        }
+
+        function renderCategoryFilter() {
+          const categories = [...new Set(targetDataRows.map((row) => row[0]).filter(Boolean))].sort((a, b) =>
+            a.localeCompare(b, "ja")
+          );
+          categoryFilterEl.innerHTML = [`<option value="">すべて表示</option>`]
+            .concat(categories.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`))
+            .join("");
+          categoryFilterEl.value = categories.includes(currentFilterValue) ? currentFilterValue : "";
+          currentFilterValue = categoryFilterEl.value;
+        }
+
+        function renderGrid() {
+          renderCategoryFilter();
+
+          if (targetDataRows.length === 0) {
+            gridWrapEl.hidden = true;
+            gridEmptyEl.hidden = false;
+            gridEmptyEl.textContent = "書き込み対象CSVのレコードはまだありません。";
+            gridBodyEl.innerHTML = "";
+            return;
+          }
+
+          const filteredRows = targetDataRows
+            .map((row, index) => ({ row, index }))
+            .filter(({ row }) => !currentFilterValue || row[0] === currentFilterValue);
+
+          if (filteredRows.length === 0) {
+            gridWrapEl.hidden = true;
+            gridEmptyEl.hidden = false;
+            gridEmptyEl.textContent = "選択中の機材区分に一致するレコードはありません。";
+            gridBodyEl.innerHTML = "";
+            return;
+          }
+
+          gridEmptyEl.hidden = true;
+          gridWrapEl.hidden = false;
+          gridBodyEl.innerHTML = filteredRows
+            .map(
+              ({ row, index }) => `
+                <tr>
+                  <td class="readonly">${index + 1}</td>
+                  <td><input class="cell-input" type="text" data-row-index="${index}" data-col-index="0" value="${escapeHtml(row[0])}" /></td>
+                  <td><input class="cell-input" type="text" data-row-index="${index}" data-col-index="1" value="${escapeHtml(row[1])}" /></td>
+                  <td><input class="cell-input" type="text" data-row-index="${index}" data-col-index="2" value="${escapeHtml(row[2])}" /></td>
+                  <td><input class="cell-input" type="text" data-row-index="${index}" data-col-index="3" value="${escapeHtml(row[3])}" /></td>
+                  <td class="readonly">${escapeHtml(row[4])}</td>
+                </tr>
+              `
+            )
+            .join("");
+        }
+
+        function syncGridEdits() {
+          const inputs = gridBodyEl.querySelectorAll("input[data-row-index][data-col-index]");
+          inputs.forEach((input) => {
+            const rowIndex = Number(input.getAttribute("data-row-index"));
+            const colIndex = Number(input.getAttribute("data-col-index"));
+            if (targetDataRows[rowIndex]) {
+              targetDataRows[rowIndex][colIndex] = normalizeCell(input.value);
+            }
+          });
+        }
+
+        function setupProductNameResize() {
+          if (!productNameColEl || !productNameResizerEl) return;
+
+          let startX = 0;
+          let startWidth = 0;
+
+          const onPointerMove = (event) => {
+            const nextWidth = Math.max(220, startWidth + (event.clientX - startX));
+            productNameColEl.style.width = `${nextWidth}px`;
+          };
+
+          const onPointerUp = () => {
+            window.removeEventListener("pointermove", onPointerMove);
+            window.removeEventListener("pointerup", onPointerUp);
+          };
+
+          productNameResizerEl.addEventListener("pointerdown", (event) => {
+            event.preventDefault();
+            startX = event.clientX;
+            startWidth = productNameColEl.getBoundingClientRect().width;
+            window.addEventListener("pointermove", onPointerMove);
+            window.addEventListener("pointerup", onPointerUp);
+          });
+        }
+
+        function setActiveManual(tabId) {
+          manualTabEls.forEach((tabEl) => {
+            tabEl.classList.toggle("active", tabEl.getAttribute("data-manual-tab") === tabId);
+          });
+          manualPanelEls.forEach((panelEl) => {
+            panelEl.hidden = panelEl.getAttribute("data-manual-panel") !== tabId;
+          });
+        }
+
+        function setManualCollapsed(collapsed) {
+          manualPanelContainerEl.hidden = collapsed;
+          toggleManualBtnEl.classList.toggle("collapsed", collapsed);
+          toggleManualBtnEl.textContent = collapsed ? "マニュアルを表示する" : "マニュアルを閉じる";
+        }
+
+        async function refreshReviewFromTarget() {
+          if (!targetHandle) {
+            renderReview();
+            targetDataRows = [];
+            renderGrid();
+            return;
+          }
+
+          const allRows = await readTargetRows();
+          let baseRows = allRows.map((r) => r.map((c) => normalizeCell(c)));
+
+          if (baseRows.length === 0) {
+            baseRows = [EXPECTED_HEADER.slice()];
+          }
+
+          if (!isHeaderRow(baseRows[0])) {
+            throw new Error("書き込み対象CSVのヘッダーが想定と異なります");
+          }
+
+          renderReview(baseRows);
+          targetDataRows = baseRows.slice(1).map((row) => row.slice());
+          renderGrid();
+        }
+
+        async function readTargetRows() {
+          if (!targetHandle) {
+            throw new Error("書き込むCSVファイルを指定してください");
+          }
+          const file = await targetHandle.getFile();
+          const text = await file.text();
+          return parseCsv(text);
+        }
+
+        function validateAndCleanInputRows(rows) {
+          const cleaned = rows
+            .map((r) => r.map((cell) => normalizeCell(cell)))
+            .filter((r) => r.some((c) => c.length > 0))
+            .filter((r) => !isHeaderRow(r));
+
+          if (cleaned.length === 0) {
+            throw new Error("追加対象の有効なレコードがありません");
+          }
+
+          const invalid = cleaned.find((r) => r.length !== COLUMN_COUNT);
+          if (invalid) {
+            throw new Error("書き込むファイルに対し列数が一致しません");
+          }
+
+          return cleaned;
+        }
+
+        function containsDuplicate(existingRows, inputRows) {
+          const existingSet = new Set(existingRows.map((r) => r.join("\u0001")));
+          const localSet = new Set();
+
+          for (const row of inputRows) {
+            const key = row.join("\u0001");
+            if (existingSet.has(key) || localSet.has(key)) {
+              return true;
+            }
+            localSet.add(key);
+          }
+          return false;
+        }
+
+        function escapeHtml(value) {
+          return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+        }
+
+        function renderAttachedEditor() {
+          if (attachedCsvRows.length === 0) {
+            attachedEditorEl.hidden = true;
+            editorBodyEl.innerHTML = "";
+            return;
+          }
+
+          attachedEditorEl.hidden = false;
+          editorBodyEl.innerHTML = attachedCsvRows
+            .map(
+              (row, idx) => `
+                <tr>
+                  <td>${idx + 1}</td>
+                  <td><input class="category-input" type="text" data-row-index="${idx}" value="${escapeHtml(row[0])}" /></td>
+                  <td>${escapeHtml(row[1])}</td>
+                  <td>${escapeHtml(row[2])}</td>
+                  <td>${escapeHtml(row[3])}</td>
+                  <td>${escapeHtml(row[4])}</td>
+                </tr>
+              `
+            )
+            .join("");
+        }
+
+        function syncAttachedRowsFromEditor() {
+          const inputs = editorBodyEl.querySelectorAll("input[data-row-index]");
+          inputs.forEach((input) => {
+            const idx = Number(input.getAttribute("data-row-index"));
+            if (attachedCsvRows[idx]) {
+              attachedCsvRows[idx][0] = String(input.value ?? "").trim();
+            }
+          });
+        }
+
+        async function appendRows(inputRows, sourceLabel) {
+          const allRows = await readTargetRows();
+          let baseRows = allRows.map((r) => r.map((c) => normalizeCell(c)));
+
+          if (baseRows.length === 0) {
+            baseRows = [EXPECTED_HEADER.slice()];
+          }
+
+          if (!isHeaderRow(baseRows[0])) {
+            throw new Error("書き込み対象CSVのヘッダーが想定と異なります");
+          }
+
+          const existingData = baseRows.slice(1);
+          if (containsDuplicate(existingData, inputRows)) {
+            throw new Error("既にこの情報は存在します");
+          }
+
+          const mergedRows = [...baseRows, ...inputRows];
+
+          const csvOut = rowsToCsv(mergedRows);
+          const writable = await targetHandle.createWritable();
+          await writable.write(csvOut);
+          await writable.close();
+
+          renderReview(mergedRows);
+          targetDataRows = mergedRows.slice(1).map((row) => row.slice());
+          renderGrid();
+          log(`${sourceLabel}: ${inputRows.length}件を追記しました`);
+          return inputRows.length;
+        }
+
+        async function loadAttachedCsv(file) {
+          if (!file) {
+            attachedCsvRows = [];
+            renderAttachedEditor();
+            return;
+          }
+          const text = await file.text();
+          attachedCsvRows = validateAndCleanInputRows(parseCsv(text));
+          renderAttachedEditor();
+        }
+
+        document.getElementById("pickTargetBtn").addEventListener("click", async () => {
+          try {
+            if (!window.showOpenFilePicker) {
+              throw new Error("このブラウザは File System Access API に未対応です");
+            }
+            const [handle] = await window.showOpenFilePicker({
+              multiple: false,
+              types: [
+                {
+                  description: "CSVファイル",
+                  accept: { "text/csv": [".csv"] },
+                },
+              ],
+            });
+            targetHandle = handle;
+            targetFileNameEl.textContent = handle.name;
+            await refreshReviewFromTarget();
+            log(`書き込み先ファイルを指定: ${handle.name}`);
+          } catch (err) {
+            log(`書き込み先ファイル指定エラー: ${err.message}`);
+          }
+        });
+
+        document.getElementById("clearTargetBtn").addEventListener("click", () => {
+          targetHandle = null;
+          targetFileNameEl.textContent = "未選択";
+          renderReview();
+          targetDataRows = [];
+          currentFilterValue = "";
+          renderGrid();
+          setResult(gridResultEl, "", false);
+          log("書き込み先ファイル指定をクリアしました");
+        });
+
+        document.getElementById("appendTextBtn").addEventListener("click", async () => {
+          textResultEl.textContent = "";
+          try {
+            const text = textInputEl.value;
+            const rows = validateAndCleanInputRows(parseCsv(text));
+            const count = await appendRows(rows, "テキスト追加");
+            setResult(textResultEl, `正常終了: ${count}件追記しました`);
+          } catch (err) {
+            setResult(textResultEl, `書き込みエラー: ${err.message}`, true);
+            log(`テキスト追加エラー: ${err.message}`);
+          }
+        });
+
+        document.getElementById("clearTextBtn").addEventListener("click", () => {
+          textInputEl.value = "";
+          setResult(textResultEl, "テキスト入力をクリアしました", false);
+          log("テキスト入力をクリアしました");
+        });
+
+        async function setAttachedFile(file) {
+          attachedCsvFile = file;
+          attachedFileEl.textContent = file ? `添付ファイル: ${file.name}` : "未添付";
+          if (!file) {
+            attachedCsvRows = [];
+            renderAttachedEditor();
+            return;
+          }
+          try {
+            await loadAttachedCsv(file);
+            setResult(fileResultEl, "添付CSVを読み込みました。必要なら機材区分を編集してください。", false);
+            log(`添付CSVを読み込み: ${file.name} (${attachedCsvRows.length}件)`);
+          } catch (err) {
+            attachedCsvRows = [];
+            renderAttachedEditor();
+            setResult(fileResultEl, `書き込みエラー: ${err.message}`, true);
+            log(`添付CSV読み込みエラー: ${err.message}`);
+          }
+        }
+
+        document.getElementById("attachInput").addEventListener("change", async (e) => {
+          const file = e.target.files?.[0] || null;
+          await setAttachedFile(file);
+        });
+
+        const dropzone = document.getElementById("dropzone");
+        ["dragenter", "dragover"].forEach((name) => {
+          dropzone.addEventListener(name, (e) => {
+            e.preventDefault();
+            dropzone.classList.add("dragover");
+          });
+        });
+        ["dragleave", "drop"].forEach((name) => {
+          dropzone.addEventListener(name, (e) => {
+            e.preventDefault();
+            dropzone.classList.remove("dragover");
+          });
+        });
+
+        dropzone.addEventListener("drop", async (e) => {
+          const files = e.dataTransfer?.files;
+          if (!files || files.length === 0) return;
+          if (files.length > 1) {
+            setResult(fileResultEl, "書き込みエラー: 添付CSVは1ファイルのみです", true);
+            log("添付CSVエラー: 2ファイル以上がドロップされました");
+            return;
+          }
+          await setAttachedFile(files[0]);
+        });
+
+        document.getElementById("appendFileBtn").addEventListener("click", async () => {
+          fileResultEl.textContent = "";
+          try {
+            if (!attachedCsvFile || attachedCsvRows.length === 0) {
+              throw new Error("添付CSVファイルを指定してください");
+            }
+            syncAttachedRowsFromEditor();
+            const rows = validateAndCleanInputRows(attachedCsvRows);
+            const count = await appendRows(rows, "添付CSV追加");
+            setResult(fileResultEl, `正常終了: ${count}件追記しました`);
+          } catch (err) {
+            setResult(fileResultEl, `書き込みエラー: ${err.message}`, true);
+            log(`添付CSV追加エラー: ${err.message}`);
+          }
+        });
+
+        document.getElementById("clearAttachedBtn").addEventListener("click", async () => {
+          attachInputEl.value = "";
+          await setAttachedFile(null);
+          setResult(fileResultEl, "添付CSVファイル指定をクリアしました", false);
+          log("添付CSVファイル指定をクリアしました");
+        });
+
+        categoryFilterEl.addEventListener("change", () => {
+          syncGridEdits();
+          currentFilterValue = categoryFilterEl.value;
+          renderGrid();
+        });
+
+        document.getElementById("saveGridBtn").addEventListener("click", async () => {
+          setResult(gridResultEl, "", false);
+          try {
+            if (!targetHandle) {
+              throw new Error("書き込むCSVファイルを指定してください");
+            }
+
+            syncGridEdits();
+            const rowsToSave = [EXPECTED_HEADER.slice(), ...targetDataRows.map((row) => row.map((cell) => normalizeCell(cell)))];
+            const csvOut = rowsToCsv(rowsToSave);
+            const writable = await targetHandle.createWritable();
+            await writable.write(csvOut);
+            await writable.close();
+
+            renderReview(rowsToSave);
+            renderGrid();
+            setResult(gridResultEl, "正常終了: 編集内容を上書き保存しました", false);
+            log("編集テーブルの内容を上書き保存しました");
+          } catch (err) {
+            setResult(gridResultEl, `書き込みエラー: ${err.message}`, true);
+            log(`編集テーブル保存エラー: ${err.message}`);
+          }
+        });
+
+        toggleReviewBtnEl.addEventListener("click", () => {
+          setReviewCollapsed(!reviewPanelEl.hidden);
+        });
+
+        document.getElementById("jumpToEditorBtn").addEventListener("click", () => {
+          importEditorSectionEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        manualTabEls.forEach((tabEl) => {
+          tabEl.addEventListener("click", () => {
+            setActiveManual(tabEl.getAttribute("data-manual-tab"));
+          });
+        });
+
+        toggleManualBtnEl.addEventListener("click", () => {
+          setManualCollapsed(!manualPanelContainerEl.hidden);
+        });
+
+        renderReview();
+        renderAttachedEditor();
+        renderGrid();
+        setReviewCollapsed(false);
+        setupProductNameResize();
+        setActiveManual("manual-target");
+        setManualCollapsed(true);
+        log("ツールを起動しました");
+      })();
+    </script>
+  </body>
+</html>
