@@ -20,8 +20,8 @@ const DIR = {
   down: { x: 0, y: 1, angle: Math.PI / 2 },
 };
 
-// 0=道,1=壁,2=ドット,3=パワーエサ
-const MAZE = [
+// 0=道,1=壁,2=ドット,3=パワーエサ,4=ゴーストの巣のドア
+const BASE_MAZE = [
   "11111111111111111111111",
   "13322222222112222222331",
   "12111121112112111211121",
@@ -29,10 +29,10 @@ const MAZE = [
   "12112111112112111121121",
   "12212122222222222121221",
   "11112121111111112121111",
-  "00002122000000022120000",
-  "11112121111111112121111",
+  "00002122000400022120000",
+  "11112121110001112121111",
   "22222221000000001222222",
-  "11112121111111112121111",
+  "11112121110001112121111",
   "00002122000000022120000",
   "11112121111111112121111",
   "12222122222222222122221",
@@ -41,9 +41,31 @@ const MAZE = [
   "11111111111111111111111",
 ];
 
+// 初心者向けメモ: 10パターン分の「差分」を用意し、同じ土台を少しずつ変えます。
+const MAZE_EDITS = [
+  [],
+  [[3, 9], [19, 9], [11, 3], [11, 13]],
+  [[1, 7], [21, 7], [1, 11], [21, 11]],
+  [[5, 5], [17, 5], [5, 13], [17, 13]],
+  [[8, 1], [14, 1], [8, 15], [14, 15]],
+  [[2, 9], [20, 9], [11, 5], [11, 11]],
+  [[4, 7], [18, 7], [4, 11], [18, 11]],
+  [[6, 3], [16, 3], [6, 13], [16, 13]],
+  [[9, 5], [13, 5], [9, 11], [13, 11]],
+  [[10, 1], [12, 1], [10, 15], [12, 15]],
+];
+
+function buildMazePattern(index) {
+  const src = BASE_MAZE.map((r) => r.split("").map(Number));
+  const edits = MAZE_EDITS[index % MAZE_EDITS.length];
+  for (const [x, y] of edits) {
+    if (src[y][x] === 1) src[y][x] = 2;
+  }
+  return src;
+}
+
 let map = [];
 let dotsLeft = 0;
-let totalDots = 0;
 
 let gameState = STATE.OPENING_SCROLL;
 let openingOffset = canvas.height;
@@ -54,36 +76,24 @@ let highScore = 0;
 let round = 1;
 let lives = 3;
 let frightened = 0;
+let playTime = 0;
 
-const pac = {
-  x: 11,
-  y: 13,
-  px: 0,
-  py: 0,
-  dir: "left",
-  next: "left",
-  speed: 6.8,
-  mouth: 0,
-};
+const pac = { x: 11, y: 13, px: 0, py: 0, dir: "left", next: "left", speed: 6.8, mouth: 0 };
 
 const ghosts = [];
 const ghostBase = [
-  { color: "#ff2f2f", x: 11, y: 9 },
-  { color: "#ff9fd6", x: 10, y: 9 },
-  { color: "#33d6ff", x: 12, y: 9 },
-  { color: "#ff9d10", x: 11, y: 8 },
+  { color: "#ff2f2f", x: 11, y: 9, release: 0 },
+  { color: "#ff9fd6", x: 10, y: 9, release: 3 },
+  { color: "#33d6ff", x: 12, y: 9, release: 6 },
+  { color: "#ff9d10", x: 11, y: 10, release: 9 },
 ];
 
 function resetMap() {
-  map = MAZE.map((row) => row.split("").map(Number));
+  map = buildMazePattern((round - 1) % 10);
   dotsLeft = 0;
-  totalDots = 0;
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
-      if (map[y][x] === 2 || map[y][x] === 3) {
-        dotsLeft++;
-        totalDots++;
-      }
+      if (map[y][x] === 2 || map[y][x] === 3) dotsLeft++;
     }
   }
 }
@@ -97,15 +107,16 @@ function resetActors() {
   pac.next = "left";
 
   ghosts.length = 0;
-  ghostBase.forEach((g, i) => {
+  ghostBase.forEach((g) => {
     ghosts.push({
       x: g.x,
       y: g.y,
       px: g.x * TILE + TILE / 2,
       py: HUD_H + g.y * TILE + TILE / 2,
-      dir: i % 2 ? "right" : "left",
+      dir: "up",
       color: g.color,
-      dead: false,
+      releaseAt: g.release,
+      released: g.release === 0,
     });
   });
 }
@@ -114,6 +125,7 @@ function startGamePlay() {
   resetMap();
   resetActors();
   frightened = 0;
+  playTime = 0;
   gameState = STATE.PLAYING;
 }
 
@@ -130,10 +142,14 @@ function tileAt(x, y) {
   return map[y][x];
 }
 
-function canMove(x, y, dir) {
+function canMove(x, y, dir, isGhost = false) {
   const nx = x + DIR[dir].x;
   const ny = y + DIR[dir].y;
-  return tileAt(nx, ny) !== 1;
+  const t = tileAt(nx, ny);
+  if (t === 1) return false;
+  // ドア(4)はゴーストだけ通過可能。パックは通れません。
+  if (t === 4 && !isGhost) return false;
+  return true;
 }
 
 function warp(e) {
@@ -142,8 +158,8 @@ function warp(e) {
 }
 
 function updatePac(dt) {
-  if (canMove(pac.x, pac.y, pac.next)) pac.dir = pac.next;
-  if (!canMove(pac.x, pac.y, pac.dir)) return;
+  if (canMove(pac.x, pac.y, pac.next, false)) pac.dir = pac.next;
+  if (!canMove(pac.x, pac.y, pac.dir, false)) return;
 
   const step = pac.speed * TILE * dt;
   pac.px += DIR[pac.dir].x * step;
@@ -162,11 +178,11 @@ function updatePac(dt) {
   }
 }
 
-function pickGhostDir(g) {
-  const dirs = ["left", "right", "up", "down"].filter((d) => canMove(g.x, g.y, d));
-  if (dirs.length === 0) return g.dir;
+function chooseGhostDir(g) {
+  const dirs = ["left", "right", "up", "down"].filter((d) => canMove(g.x, g.y, d, true));
+  if (!dirs.length) return g.dir;
 
-  if (frightened > 0 && !g.dead) return dirs[(Math.random() * dirs.length) | 0];
+  if (frightened > 0) return dirs[(Math.random() * dirs.length) | 0];
 
   let best = dirs[0];
   let bestDist = Infinity;
@@ -184,10 +200,21 @@ function pickGhostDir(g) {
 
 function updateGhosts(dt) {
   ghosts.forEach((g) => {
-    if (Math.random() < 0.06) g.dir = pickGhostDir(g);
-    if (!canMove(g.x, g.y, g.dir)) g.dir = pickGhostDir(g);
+    if (!g.released) {
+      if (playTime >= g.releaseAt) g.released = true;
+      // 巣の中では上下に小さく動いて待機
+      const dir = Math.sin(playTime * 3) > 0 ? "up" : "down";
+      if (canMove(g.x, g.y, dir, true)) g.dir = dir;
+    } else {
+      // 巣から出るまで上方向を優先
+      if (g.y >= 8 && canMove(g.x, g.y, "up", true)) {
+        g.dir = "up";
+      } else if (!canMove(g.x, g.y, g.dir, true) || Math.random() < 0.08) {
+        g.dir = chooseGhostDir(g);
+      }
+    }
 
-    const speed = (frightened > 0 ? 3.2 : 5.8) * TILE * dt;
+    const speed = (frightened > 0 ? 3.0 : 5.5) * TILE * dt;
     g.px += DIR[g.dir].x * speed;
     g.py += DIR[g.dir].y * speed;
 
@@ -204,6 +231,8 @@ function updateGhosts(dt) {
       g.y = 9;
       g.px = g.x * TILE + TILE / 2;
       g.py = HUD_H + g.y * TILE + TILE / 2;
+      g.released = false;
+      g.releaseAt = playTime + 2;
       return;
     }
 
@@ -212,6 +241,7 @@ function updateGhosts(dt) {
       gameState = STATE.GAMEOVER;
     } else {
       resetActors();
+      playTime = 0;
     }
   });
 }
@@ -221,7 +251,7 @@ function drawOpening() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.save();
-  // 初心者向けメモ: ここで画面全体を下から上へスライドさせています。
+  // 初心者向けメモ: openingOffset が 0 に近づくほど、下から上へ表示されます。
   ctx.translate(0, openingOffset);
 
   ctx.fillStyle = "#7c0c12";
@@ -236,33 +266,23 @@ function drawOpening() {
   ctx.fillText("10000", 240, 120);
   ctx.fillText("00", 480, 120);
 
-  const boxX = 42;
-  const boxY = 170;
-  const boxW = 468;
-  const boxH = 130;
-
   ctx.fillStyle = "#e79672";
-  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.fillRect(42, 170, 468, 130);
   ctx.strokeStyle = "#7d1a1c";
   ctx.lineWidth = 8;
-  ctx.strokeRect(boxX, boxY, boxW, boxH);
+  ctx.strokeRect(42, 170, 468, 130);
 
   ctx.fillStyle = "#ce9f4b";
   ctx.font = "bold 62px sans-serif";
   ctx.fillText("PACPACMAN", 72, 255);
-  ctx.strokeStyle = "#111";
-  ctx.lineWidth = 3;
-  ctx.strokeText("PACPACMAN", 72, 255);
 
   ctx.fillStyle = "#f4f4f4";
   ctx.font = "bold 50px monospace";
   ctx.fillText("▶ 1 PLAYER", 110, 375);
   ctx.fillText("  2 PLAYERS", 110, 445);
 
-  ctx.fillStyle = "#f4f4f4";
   ctx.font = "bold 24px monospace";
-  const msg = gameState === STATE.OPENING_WAIT ? "PRESS ENTER TO START" : "OPENING...";
-  ctx.fillText(msg, 108, 575);
+  ctx.fillText(gameState === STATE.OPENING_WAIT ? "PRESS ENTER TO START" : "OPENING...", 108, 575);
 
   ctx.restore();
 }
@@ -289,7 +309,6 @@ function drawMap() {
       const t = map[y][x];
       const px = x * TILE;
       const py = HUD_H + y * TILE;
-
       ctx.fillStyle = "#000";
       ctx.fillRect(px, py, TILE, TILE);
 
@@ -356,9 +375,7 @@ function draw() {
   drawPac();
   ghosts.forEach(drawGhost);
 
-  if (gameState === STATE.GAMEOVER) {
-    drawOverlay("GAME OVER", "Enterでオープニングに戻る");
-  }
+  if (gameState === STATE.GAMEOVER) drawOverlay("GAME OVER", "Enterでオープニングへ戻る");
 }
 
 let prev = 0;
@@ -377,6 +394,7 @@ function loop(ts) {
       if (openingReadyTimer > 0.4) gameState = STATE.OPENING_WAIT;
     }
   } else if (gameState === STATE.PLAYING) {
+    playTime += dt;
     if (frightened > 0) frightened -= dt;
     updatePac(dt);
     updateGhosts(dt);
