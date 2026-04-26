@@ -53,7 +53,7 @@ let frightenedTimer = 0;
 let modeTimer = 0;
 let modeIndex = 0;
 let intermission = 0;
-let openingY = canvas.height + 180;
+let openingOffset = canvas.height;
 let openingHold = 0;
 let openingReady = false;
 let openingSkipRequested = false;
@@ -147,7 +147,7 @@ function restartGame() {
   round = 1;
   lives = 3;
   gameState = "opening";
-  openingY = canvas.height + 180;
+  openingOffset = canvas.height;
   openingHold = 0;
   openingReady = false;
   openingSkipRequested = false;
@@ -341,10 +341,14 @@ function drawOpening() {
   ctx.fillText("10000", 240, 120);
   ctx.fillText("00", 480, 120);
 
+  ctx.save();
+  // 初心者向けメモ: 画面全体を下から上へ動かすために、まとめて座標をずらします。
+  ctx.translate(0, openingOffset);
+
   const boxW = 470;
   const boxH = 132;
   const boxX = (canvas.width - boxW) / 2;
-  const boxY = openingY;
+  const boxY = 170;
 
   ctx.fillStyle = "#e79572";
   ctx.fillRect(boxX, boxY, boxW, boxH);
@@ -376,6 +380,8 @@ function drawOpening() {
   ctx.fillStyle = openingReady ? "#fff47a" : "#9a9a9a";
   ctx.font = "bold 24px monospace";
   ctx.fillText(openingReady ? "PRESS ENTER TO START" : "OPENING...", 110, 578);
+
+  ctx.restore();
 }
 
 function drawHud() {
@@ -539,13 +545,13 @@ function loop(ts) {
   highScore = Math.max(highScore, score);
 
   if (gameState === "opening") {
-    const targetY = 80;
-    if (openingY > targetY) {
-      openingY -= 220 * dt;
+    const targetOffset = 0;
+    if (openingOffset > targetOffset) {
+      openingOffset -= 320 * dt;
+      if (openingOffset < targetOffset) openingOffset = targetOffset;
     } else {
-      openingY = targetY;
       openingHold += dt;
-      if (openingHold > 0.7) openingReady = true;
+      if (openingHold > 0.5) openingReady = true;
       if (openingSkipRequested && openingReady) startRound();
     }
   } else if (gameState === "playing") {
