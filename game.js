@@ -56,6 +56,7 @@ let intermission = 0;
 let openingY = canvas.height + 180;
 let openingHold = 0;
 let openingReady = false;
+let openingSkipRequested = false;
 
 let fruit = null;
 let fruitTimer = 0;
@@ -137,6 +138,7 @@ function startRound() {
   fruitTimer = 0;
   fruitSpawnCount = 0;
   openingReady = false;
+  openingSkipRequested = false;
   gameState = "playing";
 }
 
@@ -148,6 +150,7 @@ function restartGame() {
   openingY = canvas.height + 180;
   openingHold = 0;
   openingReady = false;
+  openingSkipRequested = false;
 }
 
 function getGhostTarget(g) {
@@ -370,11 +373,9 @@ function drawOpening() {
   ctx.fillText("© 1980  1984 PACPAC LTD.", 56, boxY + 426);
   ctx.fillText("ALL RIGHTS RESERVED", 82, boxY + 474);
 
-  if (openingReady) {
-    ctx.fillStyle = "#fff47a";
-    ctx.font = "bold 28px monospace";
-    ctx.fillText("PRESS ENTER TO START", 86, boxY + 530);
-  }
+  ctx.fillStyle = openingReady ? "#fff47a" : "#9a9a9a";
+  ctx.font = "bold 24px monospace";
+  ctx.fillText(openingReady ? "PRESS ENTER TO START" : "OPENING...", 110, 578);
 }
 
 function drawHud() {
@@ -538,13 +539,14 @@ function loop(ts) {
   highScore = Math.max(highScore, score);
 
   if (gameState === "opening") {
-    const targetY = 160;
+    const targetY = 80;
     if (openingY > targetY) {
       openingY -= 220 * dt;
     } else {
       openingY = targetY;
       openingHold += dt;
       if (openingHold > 0.7) openingReady = true;
+      if (openingSkipRequested && openingReady) startRound();
     }
   } else if (gameState === "playing") {
     updateMode(dt);
@@ -571,6 +573,7 @@ function loop(ts) {
 }
 
 window.addEventListener("keydown", (e) => {
+  // 初心者向けメモ: 矢印キーでページがスクロールすると操作しづらいので止めます。
   const blocked = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", " ", "Spacebar"];
   if (blocked.includes(e.key)) e.preventDefault();
 
@@ -579,8 +582,9 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "ArrowUp") pacman.nextDir = "up";
   if (e.key === "ArrowDown") pacman.nextDir = "down";
 
-  if ((e.key === "Enter" || e.key === " " || e.key === "Spacebar") && gameState === "opening" && openingReady) {
-    startRound();
+  if ((e.key === "Enter" || e.key === " " || e.key === "Spacebar") && gameState === "opening") {
+    openingSkipRequested = true;
+    if (openingReady) startRound();
   }
 
   if (e.key === "Enter" && gameState === "gameover") restartGame();
