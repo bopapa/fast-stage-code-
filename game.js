@@ -55,6 +55,7 @@ let modeIndex = 0;
 let intermission = 0;
 let openingY = canvas.height + 180;
 let openingHold = 0;
+let openingReady = false;
 
 let fruit = null;
 let fruitTimer = 0;
@@ -135,6 +136,7 @@ function startRound() {
   fruit = null;
   fruitTimer = 0;
   fruitSpawnCount = 0;
+  openingReady = false;
   gameState = "playing";
 }
 
@@ -145,6 +147,7 @@ function restartGame() {
   gameState = "opening";
   openingY = canvas.height + 180;
   openingHold = 0;
+  openingReady = false;
 }
 
 function getGhostTarget(g) {
@@ -366,6 +369,12 @@ function drawOpening() {
   ctx.font = "bold 34px monospace";
   ctx.fillText("© 1980  1984 PACPAC LTD.", 56, boxY + 426);
   ctx.fillText("ALL RIGHTS RESERVED", 82, boxY + 474);
+
+  if (openingReady) {
+    ctx.fillStyle = "#fff47a";
+    ctx.font = "bold 28px monospace";
+    ctx.fillText("PRESS ENTER TO START", 86, boxY + 530);
+  }
 }
 
 function drawHud() {
@@ -535,7 +544,7 @@ function loop(ts) {
     } else {
       openingY = targetY;
       openingHold += dt;
-      if (openingHold > 2.2) startRound();
+      if (openingHold > 0.7) openingReady = true;
     }
   } else if (gameState === "playing") {
     updateMode(dt);
@@ -562,11 +571,18 @@ function loop(ts) {
 }
 
 window.addEventListener("keydown", (e) => {
+  const blocked = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", " ", "Spacebar"];
+  if (blocked.includes(e.key)) e.preventDefault();
+
   if (e.key === "ArrowLeft") pacman.nextDir = "left";
   if (e.key === "ArrowRight") pacman.nextDir = "right";
   if (e.key === "ArrowUp") pacman.nextDir = "up";
   if (e.key === "ArrowDown") pacman.nextDir = "down";
-  if ((e.key === "Enter" || e.key === " ") && gameState === "opening") startRound();
+
+  if ((e.key === "Enter" || e.key === " " || e.key === "Spacebar") && gameState === "opening" && openingReady) {
+    startRound();
+  }
+
   if (e.key === "Enter" && gameState === "gameover") restartGame();
 });
 
